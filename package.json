@@ -9,12 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@xmtp/react-sdk": "^9.0.0",
+    "@xmtp/xmtp-js": "^12.1.0",
     "@xmtp/content-type-reaction": "^1.1.9",
     "@xmtp/content-type-remote-attachment": "^1.1.9",
     "@xmtp/content-type-reply": "^1.1.11",
-    "@xmtp/react-sdk": "^9.0.0",
-    "@xmtp/xmtp-js": "^13.0.1",
-    "ethers": "^5.7.2",
+    "ethers": "^6.13.3",
     "next": "14.2.15",
     "react": "^18",
     "react-dom": "^18"

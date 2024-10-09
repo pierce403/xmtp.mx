@@ -1,8 +1,7 @@
 'use client'
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useClient, useConversations, useMessages, XMTPProvider } from '@xmtp/react-sdk';
-import { Conversation, DecodedMessage, Client } from '@xmtp/xmtp-js';
 import { CachedConversation, CachedMessage, ContentTypeMetadata } from '@xmtp/react-sdk';
 import { ethers } from 'ethers';
 
@@ -11,7 +10,7 @@ type ExtendedCachedConversation = CachedConversation<ContentTypeMetadata> & { se
 // Add type definition for window.ethereum
 declare global {
   interface Window {
-    ethereum: any;
+    ethereum: ethers.Eip1193Provider;
   }
 }
 
@@ -21,9 +20,9 @@ type MockWallet = {
   signMessage: (message: string) => Promise<string>;
 };
 
-// Add this function to create a mock wallet
+// Update the createMockWallet function
 const createMockWallet = (): MockWallet => {
-  const privateKey = ethers.utils.randomBytes(32);
+  const privateKey = ethers.hexlify(ethers.randomBytes(32));
   const wallet = new ethers.Wallet(privateKey);
   return {
     address: wallet.address,
@@ -52,36 +51,31 @@ const XMTPWebmail: React.FC = () => {
 
   const { client, initialize } = useClient();
   const { conversations } = useConversations();
-  const { messages } = selectedConversation
-    ? useMessages(selectedConversation as CachedConversation<ContentTypeMetadata>)
-    : { messages: [] };
+  const { messages } = useMessages(selectedConversation as CachedConversation<ContentTypeMetadata>);
 
   const effectiveClient = useMockClient ? mockClient : client;
-  const effectiveConversations = useMockClient ? [] : conversations;
-  const effectiveMessages = useMockClient ? [] : messages;
-
-  // Remove duplicate declarations
 
   const connectWallet = async () => {
     console.log('Connecting wallet...');
     try {
       if (useMockClient) {
         console.log('Using mock client');
-        setSigner({} as ethers.Signer);
-        await initialize({} as any);
+        const mockSigner = new ethers.VoidSigner('0x0000000000000000000000000000000000000000');
+        setSigner(mockSigner);
+        await initialize({ signer: mockSigner });
         console.log('Mock client initialized');
       } else {
         let walletSigner: ethers.Signer;
         if (typeof window.ethereum !== 'undefined') {
           console.log('Using MetaMask');
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const provider = new ethers.BrowserProvider(window.ethereum);
           await provider.send('eth_requestAccounts', []);
-          walletSigner = provider.getSigner();
+          walletSigner = await provider.getSigner();
         } else {
           console.log('MetaMask not detected, using mock wallet');
           const mockWallet = createMockWallet();
           walletSigner = new ethers.VoidSigner(mockWallet.address);
-          (walletSigner as any).signMessage = mockWallet.signMessage;
+          Object.assign(walletSigner, { signMessage: mockWallet.signMessage });
         }
         setSigner(walletSigner);
         await initialize({ signer: walletSigner });
@@ -121,7 +115,7 @@ const XMTPWebmail: React.FC = () => {
           setNewMessageAddress('');
           setNewMessageContent('');
           alert('Mock: Message sent successfully!');
-        } else {
+        } else if (client) {
           console.log(`Checking if address ${newMessageAddress} is on XMTP network...`);
           const isOnNetwork = await client.canMessage(newMessageAddress);
           if (!isOnNetwork) {
@@ -256,7 +250,6 @@ const XMTPWebmail: React.FC = () => {
     </div>
   );
 };
-
 export default function Home() {
   return (
     <XMTPProvider>
