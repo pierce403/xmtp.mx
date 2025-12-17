@@ -52,23 +52,6 @@ const nextConfig = {
       stream: require.resolve('stream-browserify'),
     };
 
-    // Modify the WebAssembly loader configuration
-    config.module.rules.push({
-      test: /\.wasm$/,
-      type: 'javascript/auto',
-      use: [
-        {
-          loader: 'wasm-loader',
-          options: {
-            name: 'static/wasm/[name].[hash].[ext]',
-          },
-        },
-      ],
-    });
-
-    // Remove the custom 'wbg' module initialization
-    // as it might be causing conflicts with the WebAssembly loader
-
     return config;
   },
 };

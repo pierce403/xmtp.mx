@@ -22,6 +22,14 @@ Key tech:
 - `@xmtp/react-sdk` + `@xmtp/xmtp-js` for messaging
 - `ethers` for ENS resolution
 
+## Critical XMTP Reference (Read First)
+
+- XMTP’s “LLM chat apps” pack: `https://raw.githubusercontent.com/xmtp/docs-xmtp-org/main/llms/llms-chat-apps.txt`
+- When following XMTP docs, **use the right SDK code blocks**:
+  - For `xmtp-js` in a browser: use samples marked **`[Browser]`**
+  - For Node: use samples marked **`[Node]`**
+- This repo is a **browser** app (Next.js static export). Avoid Node-only patterns in client code.
+
 ## Build & Test Commands
 
 ```bash
@@ -74,5 +82,9 @@ npm run preview
 ### 2025-12-17
 - Wins: Static export works (`npm run build` produces `out/`), basePath support via `NEXT_PUBLIC_BASE_PATH`, `.nojekyll` added.
 - Wins: thirdweb wallet connect wired; banner warns when thirdweb client ID is missing/invalid.
+- Wins: `npx --no-install next build` succeeds (Next 15.0.7).
 - Misses: `next/dynamic(..., { ssr:false })` can’t be used in Server Components — use a client wrapper.
-
+- Misses: A custom webpack `.wasm` loader (e.g. `wasm-loader`) can break wasm-pack’s `[Browser]` init path and throw `TypeError: e.replace is not a function` (webpack URL helper receiving non-string); fix by removing the custom `.wasm` loader and letting Next emit the `.wasm` as an asset URL, then call `await init()` with no args.
+- Misses: The template workflow `.github/workflows/nextjs.yml` runs `actions/configure-pages` with `static_site_generator: next`, which mutates `next.config.js` and can introduce syntax errors (e.g. `SyntaxError: Unexpected string`); prefer the custom `.github/workflows/pages.yml` and delete/disable the template workflow.
+- Misses: If you build via Docker as root (default), it can leave root-owned `.next/` + `out/` and later `rm -rf .next out` fails with `Permission denied`; run Docker with `--user \"$(id -u):$(id -g)\"` (or clean with `docker run --rm -v \"$PWD\":/app -w /app node:20-bullseye rm -rf out .next`).
+- Misses: In Node 20 (fresh `npm ci`) you may see a build warning `Module not found: Can't resolve 'pino-pretty'` from `thirdweb`/WalletConnect; build still completes.

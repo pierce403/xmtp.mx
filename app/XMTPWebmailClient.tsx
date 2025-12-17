@@ -253,6 +253,8 @@ const XMTPWebmailClient: React.FC = () => {
   const { sendMessage } = useSendMessage();
   const { startConversation } = useStartConversation();
 
+  const xmtpEnv = (process.env.NEXT_PUBLIC_XMTP_ENV ?? 'production') as 'local' | 'dev' | 'production';
+
   const activeAccount = useActiveAccount();
   const activeWallet = useActiveWallet();
 
@@ -343,14 +345,14 @@ const XMTPWebmailClient: React.FC = () => {
 
         const provider = new ethers.BrowserProvider(eip1193Provider as ethers.Eip1193Provider);
         const signer = await provider.getSigner();
-        await initialize({ signer });
+        await initialize({ signer, options: { env: xmtpEnv } });
       } catch (err) {
         console.error('Error initializing XMTP client:', err);
       }
     };
 
     void init();
-  }, [activeWallet, client, initialize, isLoading, isWasmInitialized]);
+  }, [activeWallet, client, initialize, isLoading, isWasmInitialized, xmtpEnv]);
 
   useEffect(() => {
     if (selectedConversation || xmtpConversations.length === 0) return;
