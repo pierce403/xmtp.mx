@@ -6,6 +6,15 @@ A Gmail-like webmail UI, but backed by the XMTP network.
 - Messaging: `@xmtp/react-sdk` / `@xmtp/xmtp-js`
 - “Email” payloads: JSON blobs sent over XMTP
 
+## Local-first
+
+This is a **client-only** app (static export). The UX is “local-first”:
+
+- Messages are end-to-end encrypted on the XMTP network.
+- Once fetched + decrypted, `@xmtp/react-sdk` caches conversations/messages in **browser storage** (IndexedDB via Dexie), scoped by wallet address.
+- That local cache enables fast rendering and offline browsing (and future offline search) of previously synced messages.
+- Note: the cache contains **decrypted** message content (not additional “at rest” encryption). Clear site data to wipe it.
+
 ## Local dev
 
 ```bash

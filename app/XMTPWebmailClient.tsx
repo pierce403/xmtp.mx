@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type CachedConversation,
   type ContentTypeMetadata,
@@ -258,11 +258,70 @@ const XMTPWebmailClient: React.FC = () => {
   const activeAccount = useActiveAccount();
   const activeWallet = useActiveWallet();
 
+  const debugEnabled = useMemo(() => {
+    if (process.env.NEXT_PUBLIC_DEBUG === '1') return true;
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem('xmtp.mx.debug') === '1';
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const debug = useCallback(
+    (...args: unknown[]) => {
+      if (!debugEnabled) return;
+      console.debug('[xmtp.mx]', ...args);
+    },
+    [debugEnabled],
+  );
+
+  const activeAddress = activeAccount?.address;
+  const hasActiveWallet = Boolean(activeWallet);
+  const clientAddress = client?.address;
+  const clientError = error?.message;
+
+  useEffect(() => {
+    if (!debugEnabled) return;
+    console.info('[xmtp.mx] Debug logging enabled (set localStorage "xmtp.mx.debug" = "1" to toggle).');
+  }, [debugEnabled]);
+
+  useEffect(() => {
+    debug('state', {
+      xmtpEnv,
+      thirdwebClient: Boolean(thirdwebClient),
+      thirdwebClientIdStatus,
+      thirdwebClientIdError,
+      activeAddress,
+      hasActiveWallet,
+      wasmReady: isWasmInitialized,
+      wasmError,
+      xmtpLoading: isLoading,
+      xmtpError: clientError,
+      clientAddress,
+      conversations: xmtpConversations.length,
+    });
+  }, [
+    activeAddress,
+    clientAddress,
+    clientError,
+    debug,
+    hasActiveWallet,
+    isLoading,
+    isWasmInitialized,
+    thirdwebClientIdError,
+    thirdwebClientIdStatus,
+    wasmError,
+    xmtpConversations.length,
+    xmtpEnv,
+  ]);
+
   useEffect(() => {
     const clientId = (THIRDWEB_CLIENT_ID ?? '').trim();
     if (!clientId) {
       setThirdwebClientIdStatus('missing');
       setThirdwebClientIdError(null);
+      debug('thirdweb client ID missing; wallet connect disabled');
       return;
     }
 
@@ -271,6 +330,7 @@ const XMTPWebmailClient: React.FC = () => {
     const validate = async () => {
       setThirdwebClientIdStatus('checking');
       setThirdwebClientIdError(null);
+      debug('validating thirdweb client ID');
 
       try {
         const res = await fetch(`https://1.rpc.thirdweb.com/${clientId}`, {
@@ -291,6 +351,7 @@ const XMTPWebmailClient: React.FC = () => {
           const text = await res.text().catch(() => '');
           setThirdwebClientIdStatus('invalid');
           setThirdwebClientIdError(text ? `HTTP ${res.status}: ${text.trim()}` : `HTTP ${res.status}`);
+          debug('thirdweb client ID invalid', { status: res.status, body: text.trim() || '(empty)' });
           return;
         }
 
@@ -298,66 +359,118 @@ const XMTPWebmailClient: React.FC = () => {
         if (json?.result) {
           setThirdwebClientIdStatus('valid');
           setThirdwebClientIdError(null);
+          debug('thirdweb client ID valid');
           return;
         }
 
         setThirdwebClientIdStatus('invalid');
         setThirdwebClientIdError(json?.error?.message ?? 'Unexpected response');
+        debug('thirdweb client ID invalid (unexpected response)', json);
       } catch (err) {
         if (controller.signal.aborted) return;
         setThirdwebClientIdStatus('invalid');
         setThirdwebClientIdError(err instanceof Error ? err.message : 'Network error');
+        debug('thirdweb client ID validation network error', err);
       }
     };
 
     void validate();
 
     return () => controller.abort();
-  }, []);
-
-  const initializeWasm = async () => {
-    try {
-      const wasmModule = await import('@xmtp/user-preferences-bindings-wasm/web');
-      await wasmModule.default();
-      console.log('WebAssembly module initialized successfully');
-      setIsWasmInitialized(true);
-    } catch (error: unknown) {
-      setWasmError(error instanceof Error ? error.message : 'Unknown error');
-      console.error('Error initializing WebAssembly:', error);
-    }
-  };
-
-  useEffect(() => {
-    initializeWasm();
-  }, []);
+  }, [debug]);
 
   useEffect(() => {
     const init = async () => {
-      if (!thirdwebClient || !activeWallet || !isWasmInitialized || client || isLoading) return;
-
+      const startedAt = Date.now();
+      let warnTimer: ReturnType<typeof setTimeout> | undefined;
       try {
-        const chain = activeWallet.getChain() ?? ethereum;
-        const eip1193Provider = EIP1193.toProvider({
-          wallet: activeWallet,
-          chain,
-          client: thirdwebClient,
-        });
-
-        const provider = new ethers.BrowserProvider(eip1193Provider as ethers.Eip1193Provider);
-        const signer = await provider.getSigner();
-        await initialize({ signer, options: { env: xmtpEnv } });
-      } catch (err) {
-        console.error('Error initializing XMTP client:', err);
+        debug('initializing WASM security module…');
+        warnTimer = setTimeout(() => {
+          debug('WASM init still pending after 10s');
+        }, 10_000);
+        const wasmModule = await import('@xmtp/user-preferences-bindings-wasm/web');
+        await wasmModule.default();
+        debug('WASM security module ready');
+        debug('WASM init completed', { ms: Date.now() - startedAt });
+        console.log('WebAssembly module initialized successfully');
+        setIsWasmInitialized(true);
+      } catch (error: unknown) {
+        setWasmError(error instanceof Error ? error.message : 'Unknown error');
+        console.error('Error initializing WebAssembly:', error);
+        debug('WASM init error', error);
+        debug('WASM init failed', { ms: Date.now() - startedAt });
+      } finally {
+        if (warnTimer) clearTimeout(warnTimer);
       }
     };
 
     void init();
-  }, [activeWallet, client, initialize, isLoading, isWasmInitialized, xmtpEnv]);
+  }, [debug]);
+
+  const initializeXmtpClient = useCallback(async () => {
+    if (!thirdwebClient) {
+      debug('XMTP init skipped: missing thirdweb client');
+      return;
+    }
+    if (!activeWallet) {
+      debug('XMTP init skipped: missing active wallet');
+      return;
+    }
+    if (!isWasmInitialized) {
+      debug('XMTP init skipped: WASM not ready');
+      return;
+    }
+    if (client) {
+      debug('XMTP init skipped: client already initialized', { clientAddress: client.address });
+      return;
+    }
+    if (isLoading) {
+      debug('XMTP init skipped: already initializing');
+      return;
+    }
+
+    const startedAt = Date.now();
+    let warnTimer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const chain = activeWallet.getChain() ?? ethereum;
+      debug('XMTP init starting', { env: xmtpEnv, chainId: chain.id, chainName: chain.name });
+      const eip1193Provider = EIP1193.toProvider({
+        wallet: activeWallet,
+        chain,
+        client: thirdwebClient,
+      });
+
+      const provider = new ethers.BrowserProvider(eip1193Provider as ethers.Eip1193Provider);
+      const signer = await provider.getSigner();
+      warnTimer = setTimeout(() => {
+        debug('XMTP init still pending after 10s');
+      }, 10_000);
+      const xmtpClient = await initialize({ signer, options: { env: xmtpEnv } });
+      debug('XMTP init resolved', { address: xmtpClient?.address });
+      debug('XMTP init completed', { ms: Date.now() - startedAt });
+    } catch (err) {
+      console.error('Error initializing XMTP client:', err);
+      debug('XMTP init error', err);
+      debug('XMTP init failed', { ms: Date.now() - startedAt });
+    } finally {
+      if (warnTimer) clearTimeout(warnTimer);
+    }
+  }, [activeWallet, client, debug, initialize, isLoading, isWasmInitialized, xmtpEnv]);
+
+  useEffect(() => {
+    void initializeXmtpClient();
+  }, [initializeXmtpClient]);
 
   useEffect(() => {
     if (selectedConversation || xmtpConversations.length === 0) return;
+    debug('auto-selecting first conversation', { count: xmtpConversations.length });
     setSelectedConversation(xmtpConversations[0] ?? null);
-  }, [selectedConversation, xmtpConversations]);
+  }, [debug, selectedConversation, xmtpConversations]);
+
+  useEffect(() => {
+    if (!clientAddress) return;
+    debug('client ready', { address: clientAddress });
+  }, [clientAddress, debug]);
 
   const ensProvider = useMemo(() => {
     const rpcUrl = process.env.NEXT_PUBLIC_MAINNET_RPC_URL;
@@ -488,7 +601,20 @@ const XMTPWebmailClient: React.FC = () => {
         <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
         <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
           <h1 className="text-2xl font-bold">xmtp.mx</h1>
-          <p className="text-sm text-neutral-600">Initializing XMTP…</p>
+          <p className="text-sm text-neutral-600">
+            {!activeWallet ? 'Waiting for wallet provider…' : isLoading ? 'Initializing XMTP…' : error ? 'XMTP failed.' : 'Initializing XMTP…'}
+          </p>
+          {error ? <p className="max-w-md text-sm text-red-600">{error.message}</p> : null}
+          {error ? (
+            <button
+              type="button"
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              onClick={() => void initializeXmtpClient()}
+              disabled={!activeWallet || !isWasmInitialized || isLoading}
+            >
+              Try again
+            </button>
+          ) : null}
         </div>
       </div>
     );

@@ -1,3 +1,7 @@
+# IMPORTANT (Pierce)
+
+- After each meaningful change: `git commit` + `git push` (don’t leave work unpushed).
+
 # AGENTS.md — Instructions for coding agents
 
 ## Self-Improvement Directive
@@ -75,7 +79,7 @@ npm run preview
 
 - Prefers concise updates and visible progress.
 - Values “make it work end-to-end” over polishing.
-- OK to commit/push when explicitly requested; otherwise, leave changes unpushed.
+- Always commit and push after each meaningful change.
 
 ## Wins / Misses Log
 
@@ -86,5 +90,6 @@ npm run preview
 - Misses: `next/dynamic(..., { ssr:false })` can’t be used in Server Components — use a client wrapper.
 - Misses: A custom webpack `.wasm` loader (e.g. `wasm-loader`) can break wasm-pack’s `[Browser]` init path and throw `TypeError: e.replace is not a function` (webpack URL helper receiving non-string); fix by removing the custom `.wasm` loader and letting Next emit the `.wasm` as an asset URL, then call `await init()` with no args.
 - Misses: The template workflow `.github/workflows/nextjs.yml` runs `actions/configure-pages` with `static_site_generator: next`, which mutates `next.config.js` and can introduce syntax errors (e.g. `SyntaxError: Unexpected string`); prefer the custom `.github/workflows/pages.yml` and delete/disable the template workflow.
+- Misses: `@xmtp/react-sdk` hooks (e.g. `useClient()`) require `XMTPProvider` (wrap it in `app/Providers.tsx`); otherwise `setClient` is a no-op and the UI can hang on “Initializing XMTP…” forever.
 - Misses: If you build via Docker as root (default), it can leave root-owned `.next/` + `out/` and later `rm -rf .next out` fails with `Permission denied`; run Docker with `--user \"$(id -u):$(id -g)\"` (or clean with `docker run --rm -v \"$PWD\":/app -w /app node:20-bullseye rm -rf out .next`).
 - Misses: In Node 20 (fresh `npm ci`) you may see a build warning `Module not found: Can't resolve 'pino-pretty'` from `thirdweb`/WalletConnect; build still completes.
