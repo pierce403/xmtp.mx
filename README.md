@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# xmtp.mx
 
-## Getting Started
+A Gmail-like webmail UI, but backed by the XMTP network.
 
-First, run the development server:
+- Wallet connection: `thirdweb`
+- Messaging: `@xmtp/react-sdk` / `@xmtp/xmtp-js`
+- “Email” payloads: JSON blobs sent over XMTP
+
+## Local dev
 
 ```bash
+npm install
+cp .env.example .env
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Required env
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `NEXT_PUBLIC_THIRDWEB_CLIENT_ID`: required for wallet connect.
+- Optional (recommended): `NEXT_PUBLIC_MAINNET_RPC_URL` for ENS resolution when composing to `deanpierce.eth@xmtp.mx`.
 
-## Learn More
+### Preview the static export
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run preview
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## GitHub Pages (static)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This repo is configured for a static export (`next.config.js` uses `output: 'export'`) and deploys to GitHub Pages via `.github/workflows/pages.yml`.
 
-## Deploy on Vercel
+Setup:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. In your repo settings, set **Pages → Build and deployment → Source** to **GitHub Actions**
+2. Add repo secrets (optional but recommended):
+   - `NEXT_PUBLIC_THIRDWEB_CLIENT_ID`
+   - `NEXT_PUBLIC_MAINNET_RPC_URL`
+3. Push to `main` (or run the workflow manually)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Note: GitHub Pages is static hosting, so there are **no** Next.js API routes in this build.
+
+## SMTP → XMTP bridge (WIP)
+
+GitHub Pages can’t run a webhook, but the forwarding logic is kept in `bridge/inbound-email.ts` so you can deploy it separately (Cloudflare Worker, a tiny Node server, etc).
+
+### How address mapping works
+
+- `deanpierce.eth@xmtp.mx` → `deanpierce.eth` (resolved via ENS) → sent on XMTP to that address
+- `0xabc...@xmtp.mx` → `0xabc...` → sent on XMTP to that address
+- Anything not `@xmtp.mx` currently returns an error (SMTP delivery is not implemented yet)
+
+## Message format
+
+Compose + replies send a JSON “email” message over XMTP:
+
+- `lib/xmtpEmail.ts`

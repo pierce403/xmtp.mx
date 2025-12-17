@@ -1,45 +1,317 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useClient, useConversations, useMessages, useSendMessage } from '@xmtp/react-sdk';
-import { ContentTypeMetadata, CachedConversation } from '@xmtp/react-sdk';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type CachedConversation,
+  type ContentTypeMetadata,
+  useClient,
+  useConversations,
+  useLastMessage,
+  useMessages,
+  useSendMessage,
+  useStartConversation,
+} from '@xmtp/react-sdk';
 import { ethers } from 'ethers';
+import { useActiveAccount, useActiveWallet, ConnectButton } from 'thirdweb/react';
+import { EIP1193 } from 'thirdweb/wallets';
+import { ethereum } from 'thirdweb/chains';
+import { THIRDWEB_CLIENT_ID, thirdwebAppMetadata, thirdwebClient } from '@/lib/thirdwebClient';
+import { decodeXmtpEmail, encodeXmtpEmailV1 } from '@/lib/xmtpEmail';
+import { isHexAddress, parseRecipient, shortenAddress } from '@/lib/xmtpAddressing';
 
-// Import the WebAssembly module initialization function
-// import init from '@xmtp/user-preferences-bindings-wasm/web';
+type Conversation = CachedConversation<ContentTypeMetadata>;
 
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (args: { method: string }) => Promise<string[]>;
-    } & ethers.Eip1193Provider;
-  }
-}
+type ThirdwebClientIdStatus = 'missing' | 'checking' | 'valid' | 'invalid';
 
-const ConversationMessages: React.FC<{ conversation: CachedConversation<ContentTypeMetadata> }> = ({ conversation }) => {
-  const { messages } = useMessages(conversation);
+function ThirdwebClientIdBanner({
+  status,
+  error,
+}: {
+  status: ThirdwebClientIdStatus;
+  error: string | null;
+}) {
+  if (status !== 'missing' && status !== 'invalid') return null;
 
   return (
-    <>
-      {messages.map((message) => (
-        <div key={message.id} className="mb-2">
-          <strong>{message.senderAddress}: </strong>
-          {message.content}
+    <div className="sticky top-0 z-[60] border-b border-red-700/40 bg-red-600 text-white">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold">
+            {status === 'missing' ? 'Missing thirdweb client ID' : 'Invalid thirdweb client ID'}
+          </div>
+          <div className="mt-0.5 text-xs text-white/90">
+            {status === 'missing' ? (
+              <>
+                Set <code className="rounded bg-white/15 px-1 py-0.5">NEXT_PUBLIC_THIRDWEB_CLIENT_ID</code> and rebuild
+                (GitHub Pages: add a repo secret and redeploy).
+              </>
+            ) : (
+              <>
+                thirdweb RPC rejected the client ID{error ? ` (${error})` : ''}. Check the value and redeploy.
+              </>
+            )}
+          </div>
         </div>
-      ))}
-    </>
+        <div className="flex shrink-0 items-center gap-2">
+          <a
+            className="inline-flex items-center justify-center rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20"
+            href="https://thirdweb.com/create-api-key"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Get a key
+          </a>
+        </div>
+      </div>
+    </div>
   );
-};
+}
+
+function formatTimestamp(date?: Date): string {
+  if (!date) return '';
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  return isToday
+    ? new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(date)
+    : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
+}
+
+function ConversationRow({
+  conversation,
+  isSelected,
+  onSelect,
+}: {
+  conversation: Conversation;
+  isSelected: boolean;
+  onSelect: (conversation: Conversation) => void;
+}) {
+  const lastMessage = useLastMessage(conversation.topic);
+  const decoded = decodeXmtpEmail(lastMessage?.content);
+  const subject =
+    decoded.kind === 'email' ? decoded.email.subject : (decoded.text.split('\n')[0]?.trim() ?? '');
+  const snippet = decoded.kind === 'email' ? decoded.email.body : decoded.text;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(conversation)}
+      className={[
+        'w-full border-b px-4 py-3 text-left',
+        'transition-colors',
+        isSelected ? 'bg-blue-50' : 'bg-white hover:bg-neutral-50',
+      ].join(' ')}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-neutral-900">
+            {shortenAddress(conversation.peerAddress)}
+          </div>
+          <div className="truncate text-sm text-neutral-700">{subject || '(no subject)'}</div>
+          <div className="truncate text-xs text-neutral-500">{snippet}</div>
+        </div>
+        <div className="shrink-0 pt-0.5 text-[11px] text-neutral-500">{formatTimestamp(lastMessage?.sentAt)}</div>
+      </div>
+    </button>
+  );
+}
+
+function Thread({
+  conversation,
+  selfAddress,
+  onReply,
+}: {
+  conversation: Conversation;
+  selfAddress: string;
+  onReply: (options: { subject?: string; body: string }) => Promise<void>;
+}) {
+  const { messages } = useMessages(conversation);
+  const [replyBody, setReplyBody] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  const lastEmailSubject = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const decoded = decodeXmtpEmail(messages[i]?.content);
+      if (decoded.kind === 'email' && decoded.email.subject.trim()) return decoded.email.subject.trim();
+    }
+    return undefined;
+  }, [messages]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+  }, [conversation.topic, messages.length]);
+
+  const handleSendReply = async () => {
+    const body = replyBody.trim();
+    if (!body) return;
+
+    setIsSending(true);
+    setSendError(null);
+    setReplyBody('');
+
+    try {
+      const subject = lastEmailSubject ? `Re: ${lastEmailSubject}` : undefined;
+      await onReply({ subject, body });
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'Failed to send.');
+      setReplyBody(body);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+      <div className="border-b px-5 py-4">
+        <div className="text-sm font-semibold text-neutral-900">{shortenAddress(conversation.peerAddress)}</div>
+        <div className="text-xs text-neutral-500">XMTP thread</div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        {messages.length === 0 ? (
+          <div className="text-sm text-neutral-500">No messages yet.</div>
+        ) : (
+          <div className="space-y-3">
+            {messages.map((message) => {
+              const isSelf = message.senderAddress.toLowerCase() === selfAddress.toLowerCase();
+              const decoded = decodeXmtpEmail(message.content);
+
+              return (
+                <div key={message.id} className={['flex', isSelf ? 'justify-end' : 'justify-start'].join(' ')}>
+                  <div
+                    className={[
+                      'max-w-[720px] rounded-2xl border px-4 py-3 shadow-sm',
+                      isSelf ? 'border-blue-200 bg-blue-50' : 'border-neutral-200 bg-white',
+                    ].join(' ')}
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-4 text-xs text-neutral-500">
+                      <div className="truncate">{isSelf ? 'You' : shortenAddress(message.senderAddress)}</div>
+                      <div className="shrink-0">{formatTimestamp(message.sentAt)}</div>
+                    </div>
+
+                    {decoded.kind === 'email' ? (
+                      <div className="space-y-2">
+                        <div className="text-sm font-semibold text-neutral-900">
+                          {decoded.email.subject || '(no subject)'}
+                        </div>
+                        <div className="whitespace-pre-wrap text-sm text-neutral-900">{decoded.email.body}</div>
+                      </div>
+                    ) : (
+                      <div className="whitespace-pre-wrap text-sm text-neutral-900">{decoded.text}</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={bottomRef} />
+          </div>
+        )}
+      </div>
+
+      <div className="border-t p-4">
+        {sendError ? <div className="mb-2 text-xs text-red-600">{sendError}</div> : null}
+        <div className="flex gap-2">
+          <textarea
+            className="min-h-[44px] flex-1 resize-none rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+            placeholder="Reply…"
+            value={replyBody}
+            onChange={(e) => setReplyBody(e.currentTarget.value)}
+          />
+          <button
+            type="button"
+            className="h-[44px] shrink-0 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            onClick={() => void handleSendReply()}
+            disabled={!replyBody.trim() || isSending}
+          >
+            {isSending ? 'Sending…' : 'Send'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const XMTPWebmailClient: React.FC = () => {
   const [isWasmInitialized, setIsWasmInitialized] = useState(false);
   const [wasmError, setWasmError] = useState<string | null>(null);
-  const [selectedConversation, setSelectedConversation] = useState<CachedConversation<ContentTypeMetadata> | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [thirdwebClientIdStatus, setThirdwebClientIdStatus] = useState<ThirdwebClientIdStatus>(() =>
+    (THIRDWEB_CLIENT_ID ?? '').trim() ? 'checking' : 'missing',
+  );
+  const [thirdwebClientIdError, setThirdwebClientIdError] = useState<string | null>(null);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeTo, setComposeTo] = useState('');
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  const [composeError, setComposeError] = useState<string | null>(null);
+  const [composeIsSending, setComposeIsSending] = useState(false);
+  const [search, setSearch] = useState('');
 
   const { client, initialize, isLoading, error } = useClient();
   const { conversations: xmtpConversations } = useConversations();
   const { sendMessage } = useSendMessage();
+  const { startConversation } = useStartConversation();
+
+  const activeAccount = useActiveAccount();
+  const activeWallet = useActiveWallet();
+
+  useEffect(() => {
+    const clientId = (THIRDWEB_CLIENT_ID ?? '').trim();
+    if (!clientId) {
+      setThirdwebClientIdStatus('missing');
+      setThirdwebClientIdError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const validate = async () => {
+      setThirdwebClientIdStatus('checking');
+      setThirdwebClientIdError(null);
+
+      try {
+        const res = await fetch(`https://1.rpc.thirdweb.com/${clientId}`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'eth_chainId',
+            params: [],
+          }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          setThirdwebClientIdStatus('invalid');
+          setThirdwebClientIdError(text ? `HTTP ${res.status}: ${text.trim()}` : `HTTP ${res.status}`);
+          return;
+        }
+
+        const json = (await res.json().catch(() => null)) as null | { result?: string; error?: { message?: string } };
+        if (json?.result) {
+          setThirdwebClientIdStatus('valid');
+          setThirdwebClientIdError(null);
+          return;
+        }
+
+        setThirdwebClientIdStatus('invalid');
+        setThirdwebClientIdError(json?.error?.message ?? 'Unexpected response');
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setThirdwebClientIdStatus('invalid');
+        setThirdwebClientIdError(err instanceof Error ? err.message : 'Network error');
+      }
+    };
+
+    void validate();
+
+    return () => controller.abort();
+  }, []);
 
   const initializeWasm = async () => {
     try {
@@ -57,107 +329,345 @@ const XMTPWebmailClient: React.FC = () => {
     initializeWasm();
   }, []);
 
-  const connectWallet = async () => {
-    if (!isWasmInitialized) {
-      console.error('WebAssembly module not initialized');
-      return;
-    }
+  useEffect(() => {
+    const init = async () => {
+      if (!thirdwebClient || !activeWallet || !isWasmInitialized || client || isLoading) return;
 
-    if (typeof window.ethereum !== 'undefined') {
       try {
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const provider = new ethers.BrowserProvider(window.ethereum);
+        const chain = activeWallet.getChain() ?? ethereum;
+        const eip1193Provider = EIP1193.toProvider({
+          wallet: activeWallet,
+          chain,
+          client: thirdwebClient,
+        });
+
+        const provider = new ethers.BrowserProvider(eip1193Provider as ethers.Eip1193Provider);
         const signer = await provider.getSigner();
         await initialize({ signer });
-        setIsConnected(true);
-        console.log('XMTP client initialized successfully');
-      } catch (error) {
-        console.error('Error connecting wallet or initializing XMTP client:', error);
+      } catch (err) {
+        console.error('Error initializing XMTP client:', err);
       }
-    } else {
-      console.error('MetaMask is not installed');
+    };
+
+    void init();
+  }, [activeWallet, client, initialize, isLoading, isWasmInitialized]);
+
+  useEffect(() => {
+    if (selectedConversation || xmtpConversations.length === 0) return;
+    setSelectedConversation(xmtpConversations[0] ?? null);
+  }, [selectedConversation, xmtpConversations]);
+
+  const ensProvider = useMemo(() => {
+    const rpcUrl = process.env.NEXT_PUBLIC_MAINNET_RPC_URL;
+    if (rpcUrl) return new ethers.JsonRpcProvider(rpcUrl);
+    return ethers.getDefaultProvider('mainnet');
+  }, []);
+
+  const resolvePeerAddress = async (peer: string) => {
+    if (isHexAddress(peer)) return peer;
+    const resolved = await ensProvider.resolveName(peer);
+    if (!resolved) {
+      throw new Error(`Could not resolve "${peer}". Try a 0x address or set NEXT_PUBLIC_MAINNET_RPC_URL.`);
     }
+    return resolved;
   };
 
-  const handleSendMessage = async (content: string) => {
-    if (selectedConversation && sendMessage) {
-      try {
-        await sendMessage(selectedConversation, content);
-        console.log('Message sent successfully');
-      } catch (error) {
-        console.error('Error sending message:', error);
+  const handleSendReply = async (options: { subject?: string; body: string }) => {
+    if (!client || !selectedConversation) return;
+    const payload = encodeXmtpEmailV1({
+      subject: options.subject ?? '',
+      body: options.body,
+      from: client.address,
+      to: selectedConversation.peerAddress,
+    });
+    await sendMessage(selectedConversation, payload);
+  };
+
+  const handleComposeSend = async () => {
+    if (!client) return;
+
+    setComposeIsSending(true);
+    setComposeError(null);
+
+    try {
+      const parsed = parseRecipient(composeTo);
+      if (parsed.kind === 'invalid') {
+        setComposeError(parsed.error);
+        return;
       }
+
+      if (parsed.kind === 'smtp') {
+        setComposeError('SMTP delivery is not wired up yet. Use an @xmtp.mx address or an onchain address/ENS name.');
+        return;
+      }
+
+      const peerAddress = await resolvePeerAddress(parsed.peer);
+      const payload = encodeXmtpEmailV1({
+        subject: composeSubject.trim() || '(no subject)',
+        body: composeBody,
+        from: client.address,
+        to: composeTo.trim(),
+      });
+
+      const { cachedConversation } = await startConversation(peerAddress, payload);
+      if (cachedConversation) {
+        setSelectedConversation(cachedConversation as Conversation);
+      }
+
+      setComposeOpen(false);
+      setComposeTo('');
+      setComposeSubject('');
+      setComposeBody('');
+    } catch (err) {
+      setComposeError(err instanceof Error ? err.message : 'Failed to send.');
+    } finally {
+      setComposeIsSending(false);
     }
   };
 
   if (wasmError) {
-    return <div>Error initializing WebAssembly: {wasmError}</div>;
-  }
-
-  if (!isWasmInitialized) {
-    return <div>Initializing WebAssembly...</div>;
-  }
-
-  if (!isConnected) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <h1 className="text-2xl font-bold mb-4">XMTP Webmail Client</h1>
-        <button
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          onClick={connectWallet}
-          disabled={isLoading}
-        >
-          {isLoading ? 'Connecting...' : 'Connect Wallet'}
-        </button>
-        {error && <p className="text-red-500 mt-2">{error.message}</p>}
+      <div className="min-h-dvh bg-[#f6f8fc] text-neutral-900">
+        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+        <div className="flex h-dvh items-center justify-center px-6">
+          <div className="max-w-lg text-center">
+            <div className="text-xl font-semibold">Failed to initialize</div>
+            <div className="mt-2 text-sm text-neutral-600">WebAssembly error: {wasmError}</div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="flex flex-col h-screen">
-      <header className="bg-blue-600 text-white p-4">
-        <h1 className="text-2xl font-bold">XMTP Webmail Client</h1>
-        {client && <p>Connected as: {client.address}</p>}
-      </header>
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-1-4 bg-gray-100 p-4 overflow-y-auto">
-          <h2 className="text-xl font-semibold mb-4">Conversations</h2>
-          <ul>
-            {xmtpConversations.map((conv) => (
-              <li
-                key={conv.topic}
-                className={`cursor-pointer p-2 ${selectedConversation?.topic === conv.topic ? 'bg-blue-100' : ''}`}
-                onClick={() => setSelectedConversation(conv)}
-              >
-                {conv.peerAddress}
-              </li>
-            ))}
-          </ul>
-        </aside>
-        <main className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto p-4">
-            {selectedConversation ? (
-              <ConversationMessages conversation={selectedConversation} />
-            ) : (
-              <p>Select a conversation to view messages</p>
-            )}
+  if (!isWasmInitialized) {
+    return (
+      <div className="min-h-dvh bg-[#f6f8fc] text-neutral-900">
+        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+        <div className="flex h-dvh items-center justify-center px-6 text-center">
+          <div>
+            <div className="text-xl font-semibold">xmtp.mx</div>
+            <div className="mt-2 text-sm text-neutral-600">Initializing security module…</div>
           </div>
-          <div className="p-4 border-t">
-            <input
-              type="text"
-              className="w-full p-2 border rounded"
-              placeholder="Type a message..."
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && selectedConversation) {
-                  handleSendMessage(e.currentTarget.value);
-                  e.currentTarget.value = '';
-                }
-              }}
-            />
-          </div>
-        </main>
+        </div>
       </div>
+    );
+  }
+
+  if (!thirdwebClient) {
+    return (
+      <div className="min-h-dvh bg-[#f6f8fc] text-neutral-900">
+        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+        <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
+          <h1 className="text-2xl font-bold">xmtp.mx</h1>
+          <p className="max-w-md text-sm text-neutral-600">
+            Wallet connect is disabled because the thirdweb client ID is missing.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeAccount) {
+    return (
+      <div className="min-h-dvh bg-[#f6f8fc] text-neutral-900">
+        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+        <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
+          <h1 className="text-2xl font-bold">xmtp.mx</h1>
+          <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} />
+          {error && <p className="text-sm text-red-600">{error.message}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  if (!client) {
+    return (
+      <div className="min-h-dvh bg-[#f6f8fc] text-neutral-900">
+        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+        <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
+          <h1 className="text-2xl font-bold">xmtp.mx</h1>
+          <p className="text-sm text-neutral-600">Initializing XMTP…</p>
+        </div>
+      </div>
+    );
+  }
+
+  const filteredConversations = xmtpConversations.filter((c) =>
+    c.peerAddress.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+
+  return (
+    <div className="h-dvh bg-[#f6f8fc] text-neutral-900">
+      <div className="flex h-full flex-col">
+        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+        <header className="border-b bg-[#f6f8fc] px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-full bg-blue-600" />
+              <div className="text-lg font-semibold tracking-tight">xmtp.mx</div>
+            </div>
+
+            <div className="ml-3 hidden flex-1 sm:block">
+              <input
+                className="w-full rounded-full border bg-white px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                placeholder="Search conversations"
+                value={search}
+                onChange={(e) => setSearch(e.currentTarget.value)}
+              />
+            </div>
+
+            <div className="ml-auto">
+              <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} />
+            </div>
+          </div>
+        </header>
+
+        <div className="flex flex-1 gap-4 overflow-hidden p-4">
+          <aside className="hidden w-[256px] shrink-0 sm:flex sm:flex-col">
+            <button
+              type="button"
+              className="mb-4 inline-flex items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+              onClick={() => setComposeOpen(true)}
+            >
+              Compose
+            </button>
+
+            <nav className="space-y-1">
+              <div className="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-neutral-900 shadow-sm ring-1 ring-black/5">
+                Inbox
+              </div>
+              <div className="rounded-xl px-3 py-2 text-sm text-neutral-600">Sent</div>
+              <div className="rounded-xl px-3 py-2 text-sm text-neutral-600">Drafts</div>
+            </nav>
+          </aside>
+
+          <div className="flex min-w-0 flex-1 gap-4 overflow-hidden">
+            <section className="w-[360px] shrink-0 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+              <div className="border-b px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-neutral-900">Inbox</div>
+                  <button
+                    type="button"
+                    className="rounded-lg px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50 sm:hidden"
+                    onClick={() => setComposeOpen(true)}
+                  >
+                    Compose
+                  </button>
+                </div>
+                <div className="mt-2 sm:hidden">
+                  <input
+                    className="w-full rounded-full border bg-white px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                    placeholder="Search"
+                    value={search}
+                    onChange={(e) => setSearch(e.currentTarget.value)}
+                  />
+                </div>
+              </div>
+              <div className="h-full overflow-y-auto">
+                {filteredConversations.length === 0 ? (
+                  <div className="px-4 py-6 text-sm text-neutral-500">No conversations.</div>
+                ) : (
+                  filteredConversations.map((conversation) => (
+                    <ConversationRow
+                      key={conversation.topic}
+                      conversation={conversation}
+                      isSelected={selectedConversation?.topic === conversation.topic}
+                      onSelect={(c) => setSelectedConversation(c)}
+                    />
+                  ))
+                )}
+              </div>
+            </section>
+
+            <section className="min-w-0 flex-1 overflow-hidden">
+              {selectedConversation ? (
+                <Thread
+                  conversation={selectedConversation}
+                  selfAddress={client.address}
+                  onReply={(options) => handleSendReply(options)}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+                  <div className="text-sm text-neutral-500">Select a conversation to read messages.</div>
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
+      </div>
+
+      {composeOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 sm:items-center">
+          <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/5">
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <div className="text-sm font-semibold text-neutral-900">New message</div>
+              <button
+                type="button"
+                className="rounded-lg px-2 py-1 text-sm text-neutral-600 hover:bg-neutral-100"
+                onClick={() => {
+                  setComposeOpen(false);
+                  setComposeError(null);
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-3 px-5 py-4">
+              {composeError ? <div className="text-sm text-red-600">{composeError}</div> : null}
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600">To</label>
+                <input
+                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                  placeholder="deanpierce.eth@xmtp.mx"
+                  value={composeTo}
+                  onChange={(e) => setComposeTo(e.currentTarget.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600">Subject</label>
+                <input
+                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                  placeholder="(no subject)"
+                  value={composeSubject}
+                  onChange={(e) => setComposeSubject(e.currentTarget.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600">Message</label>
+                <textarea
+                  className="mt-1 min-h-[160px] w-full resize-y rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                  placeholder="Write your message…"
+                  value={composeBody}
+                  onChange={(e) => setComposeBody(e.currentTarget.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
+              <button
+                type="button"
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-100"
+                onClick={() => setComposeOpen(false)}
+                disabled={composeIsSending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                onClick={() => void handleComposeSend()}
+                disabled={composeIsSending || !composeTo.trim()}
+              >
+                {composeIsSending ? 'Sending…' : 'Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

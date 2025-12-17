@@ -1,9 +1,24 @@
 /** @type {import('next').NextConfig} */
 const path = require('path');
 const CopyPlugin = require('copy-webpack-plugin');
-const webpack = require('webpack');
+
+const rawBasePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+const basePath =
+  rawBasePath && rawBasePath !== '/'
+    ? rawBasePath.startsWith('/')
+      ? rawBasePath.replace(/\/$/, '')
+      : `/${rawBasePath.replace(/\/$/, '')}`
+    : '';
 
 const nextConfig = {
+  output: 'export',
+  trailingSlash: true,
+  basePath,
+  assetPrefix: basePath || undefined,
+  images: {
+    unoptimized: true,
+  },
+  serverExternalPackages: ['@xmtp/user-preferences-bindings-wasm'],
   webpack: (config, { isServer }) => {
     config.experiments = {
       asyncWebAssembly: true,

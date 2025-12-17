@@ -1,14 +1,9 @@
-import React from 'react';
-import dynamic from 'next/dynamic';
+import ClientOnly from './ClientOnly';
 
-const XMTPWebmailClient = dynamic(() => import('./XMTPWebmailClient'), { ssr: false });
-
-const Home: React.FC = () => {
+export default function Home() {
   return (
     <main>
-      <XMTPWebmailClient />
+      <ClientOnly />
     </main>
   );
-};
-
-export default Home;
+}
