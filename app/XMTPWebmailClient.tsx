@@ -1229,13 +1229,13 @@ const XMTPWebmailClient: React.FC = () => {
           <div className="flex flex-1 gap-4 overflow-hidden">
             {/* Sidebar */}
             <aside className="flex w-[180px] shrink-0 flex-col gap-3">
-              <div className="card-shiny p-3 backdrop-blur-md" style={{ background: 'var(--sidebar-bg)', borderRadius: 'var(--radius-xl)' }}>
-                <nav className="space-y-1">
+              <div className="card-shiny p-2 backdrop-blur-md" style={{ background: 'var(--sidebar-bg)', borderRadius: 'var(--radius-xl)' }}>
+                <nav className="flex flex-col gap-1">
                   {/* Compose */}
                   <button
                     type="button"
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
-                    style={{ background: 'var(--gradient-accent)' }}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition"
+                    style={{ background: 'var(--primary)', color: 'white' }}
                     onClick={() => setComposeOpen(true)}
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1246,31 +1246,31 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Inbox */}
                   <button
                     onClick={() => setDemoView('inbox')}
-                    className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition"
+                    className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition"
                     style={{
                       color: demoView === 'inbox' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'inbox' ? 'var(--primary-subtle)' : 'transparent'
                     }}
                   >
                     <span className="flex items-center gap-2">
-                      <svg className="h-4 w-4" style={{ color: demoView === 'inbox' ? 'var(--primary)' : 'inherit' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z" />
                         <path d="M22 6l-10 7L2 6" />
                       </svg>
                       Inbox
                     </span>
-                    <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: demoView === 'inbox' ? 'var(--primary)' : 'var(--surface)', color: demoView === 'inbox' ? 'var(--primary-foreground)' : 'var(--foreground-muted)' }}>{DEMO_CONVERSATIONS.length + 1}</span>
+                    <span className="text-xs">{DEMO_CONVERSATIONS.length + 1}</span>
                   </button>
                   {/* Sent */}
                   <button
                     onClick={() => setDemoView('sent')}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition"
                     style={{
                       color: demoView === 'sent' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'sent' ? 'var(--primary-subtle)' : 'transparent'
                     }}
                   >
-                    <svg className="h-4 w-4" style={{ color: demoView === 'sent' ? 'var(--primary)' : 'inherit' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                     Sent
@@ -1278,22 +1278,18 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Contacts */}
                   <button
                     onClick={() => setDemoView('contacts')}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition"
                     style={{
                       color: demoView === 'contacts' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'contacts' ? 'var(--primary-subtle)' : 'transparent'
                     }}
                   >
-                    <svg className="h-4 w-4" style={{ color: demoView === 'contacts' ? 'var(--primary)' : 'inherit' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     Contacts
                   </button>
                 </nav>
-              </div>
-              <div className="card-shiny p-3 text-xs backdrop-blur-md" style={{ background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', color: 'var(--foreground-muted)' }}>
-                <div className="font-semibold" style={{ color: 'var(--foreground)' }}>🎨 Theme Preview</div>
-                <p className="mt-1 leading-relaxed">Click the sun/moon to toggle theme!</p>
               </div>
             </aside>
 
@@ -1374,35 +1370,58 @@ const XMTPWebmailClient: React.FC = () => {
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {/* Welcome row */}
-                      <div
-                        className={`inbox-row ${demoSelectedId === WELCOME_CONVERSATION_ID ? 'selected' : ''}`}
-                        onClick={() => setDemoSelectedId(WELCOME_CONVERSATION_ID)}
-                        style={{ background: demoSelectedId === WELCOME_CONVERSATION_ID ? 'var(--welcome-bg)' : undefined }}
-                      >
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: 'var(--welcome-bg)', color: 'var(--welcome-fg)', border: '1px solid var(--welcome-border)' }}>Hi</div>
-                        <div className="truncate font-semibold text-xs" style={{ color: 'var(--foreground)' }}>XMTP Team</div>
-                        <div className="truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>Welcome</div>
-                        <div className="text-[10px] whitespace-nowrap" style={{ color: 'var(--foreground-subtle)' }}>Now</div>
-                      </div>
-                      {/* Conversations */}
-                      {DEMO_CONVERSATIONS.map((convo) => {
-                        const lastMsg = convo.messages[convo.messages.length - 1];
-                        const subject = lastMsg?.isEmail && lastMsg.subject ? lastMsg.subject : lastMsg?.content.slice(0, 30) + '...';
-                        return (
-                          <div
-                            key={convo.id}
-                            className={`inbox-row ${demoSelectedId === convo.id ? 'selected' : ''}`}
-                            onClick={() => setDemoSelectedId(convo.id)}
-                          >
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border-subtle)' }}>
-                              {(convo.peerName || convo.peerAddress).slice(0, 2).toUpperCase()}
-                            </div>
-                            <div className="truncate font-semibold text-xs" style={{ color: 'var(--foreground)' }}>{convo.peerName || convo.peerAddress}</div>
-                            <div className="truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>{subject}</div>
-                            <div className="text-[10px] whitespace-nowrap" style={{ color: 'var(--foreground-subtle)' }}>{formatTimestamp(convo.lastMessageAt)}</div>
+                      {(!search || 'welcome xmtp team'.includes(search.toLowerCase())) && (
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition border-b"
+                          style={{
+                            borderColor: 'var(--border)',
+                            background: demoSelectedId === WELCOME_CONVERSATION_ID ? 'var(--welcome-bg)' : 'transparent'
+                          }}
+                          onClick={() => setDemoSelectedId(WELCOME_CONVERSATION_ID)}
+                        >
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: 'var(--welcome-bg)', color: 'var(--welcome-fg)', border: '1px solid var(--welcome-border)' }}>Hi</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-semibold text-xs" style={{ color: 'var(--foreground)' }}>XMTP Team</div>
+                            <div className="truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>Welcome to xmtp.mx</div>
                           </div>
-                        );
-                      })}
+                          <div className="text-[10px] shrink-0" style={{ color: 'var(--foreground-subtle)' }}>Now</div>
+                        </button>
+                      )}
+                      {/* Conversations */}
+                      {DEMO_CONVERSATIONS
+                        .filter(convo => {
+                          if (!search) return true;
+                          const q = search.toLowerCase();
+                          return (convo.peerName?.toLowerCase().includes(q) ||
+                            convo.peerAddress.toLowerCase().includes(q) ||
+                            convo.messages.some(m => m.content.toLowerCase().includes(q)));
+                        })
+                        .map((convo) => {
+                          const lastMsg = convo.messages[convo.messages.length - 1];
+                          const subject = lastMsg?.isEmail && lastMsg.subject ? lastMsg.subject : lastMsg?.content.slice(0, 40);
+                          return (
+                            <button
+                              type="button"
+                              key={convo.id}
+                              className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition border-b"
+                              style={{
+                                borderColor: 'var(--border)',
+                                background: demoSelectedId === convo.id ? 'var(--primary-subtle)' : 'transparent'
+                              }}
+                              onClick={() => setDemoSelectedId(convo.id)}
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border-subtle)' }}>
+                                {(convo.peerName || convo.peerAddress).slice(0, 2).toUpperCase()}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate font-semibold text-xs" style={{ color: 'var(--foreground)' }}>{convo.peerName || convo.peerAddress}</div>
+                                <div className="truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>{subject}</div>
+                              </div>
+                              <div className="text-[10px] shrink-0" style={{ color: 'var(--foreground-subtle)' }}>{formatTimestamp(convo.lastMessageAt)}</div>
+                            </button>
+                          );
+                        })}
                     </div>
                   </section>
 
