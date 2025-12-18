@@ -1205,7 +1205,7 @@ const XMTPWebmailClient: React.FC = () => {
           {/* Main Content */}
           <div className="flex flex-1 gap-4 overflow-hidden">
             {/* Sidebar */}
-            <aside className="hidden w-[220px] shrink-0 flex-col gap-3 sm:flex">
+            <aside className="flex w-[200px] shrink-0 flex-col gap-3">
               <div className="card-shiny p-4 backdrop-blur-md" style={{ background: 'var(--sidebar-bg)', borderRadius: 'var(--radius-2xl)' }}>
                 <button
                   type="button"
