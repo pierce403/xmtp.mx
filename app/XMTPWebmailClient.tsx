@@ -1248,19 +1248,23 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Compose */}
                   <button
                     type="button"
-                    className="btn-primary flex items-center justify-center gap-1.5"
+                    className="btn-primary w-full"
                     style={{
                       height: '34px',
                       borderRadius: '8px',
                       fontSize: '13px',
-                      fontWeight: 600
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
                     }}
                     onClick={() => setComposeOpen(true)}
                   >
-                    <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="h-[14px] w-[14px]" style={{ flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path d="M12 4v16m8-8H4" />
                     </svg>
-                    Compose
+                    <span style={{ lineHeight: '14px' }}>Compose</span>
                   </button>
 
                   <div className="my-1.5 h-px" style={{ background: 'var(--border)' }}></div>
@@ -1268,40 +1272,40 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Inbox */}
                   <button
                     onClick={() => setDemoView('inbox')}
-                    className="btn-nav flex items-center gap-2"
+                    className="btn-nav w-full"
                     data-active={demoView === 'inbox' ? 'true' : undefined}
-                    style={{ height: '32px', fontSize: '13px' }}
+                    style={{ height: '32px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', paddingLeft: '10px', paddingRight: '10px' }}
                   >
-                    <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-[14px] w-[14px] shrink-0" style={{ flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z" />
                       <path d="M22 6l-10 7L2 6" />
                     </svg>
-                    Inbox
-                    <span className="ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: demoView === 'inbox' ? 'rgba(255,255,255,0.25)' : 'var(--primary)', color: 'white' }}>{DEMO_CONVERSATIONS.length + 1}</span>
+                    <span style={{ lineHeight: '14px' }}>Inbox</span>
+                    <span className="ml-auto rounded-full px-1.5 text-[10px] font-semibold" style={{ background: demoView === 'inbox' ? 'rgba(255,255,255,0.25)' : 'var(--primary)', color: 'white', lineHeight: '18px', height: '18px', display: 'flex', alignItems: 'center' }}>{DEMO_CONVERSATIONS.length + 1}</span>
                   </button>
                   {/* Sent */}
                   <button
                     onClick={() => setDemoView('sent')}
-                    className="btn-nav flex items-center gap-2"
+                    className="btn-nav w-full"
                     data-active={demoView === 'sent' ? 'true' : undefined}
-                    style={{ height: '32px', fontSize: '13px' }}
+                    style={{ height: '32px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', paddingLeft: '10px', paddingRight: '10px' }}
                   >
-                    <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-[14px] w-[14px] shrink-0" style={{ flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
-                    Sent
+                    <span style={{ lineHeight: '14px' }}>Sent</span>
                   </button>
                   {/* Contacts */}
                   <button
                     onClick={() => setDemoView('contacts')}
-                    className="btn-nav flex items-center gap-2"
+                    className="btn-nav w-full"
                     data-active={demoView === 'contacts' ? 'true' : undefined}
-                    style={{ height: '32px', fontSize: '13px' }}
+                    style={{ height: '32px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', paddingLeft: '10px', paddingRight: '10px' }}
                   >
-                    <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-[14px] w-[14px] shrink-0" style={{ flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
-                    Contacts
+                    <span style={{ lineHeight: '14px' }}>Contacts</span>
                   </button>
                 </nav>
               </div>
@@ -1580,28 +1584,28 @@ const XMTPWebmailClient: React.FC = () => {
               {/* Modal Body */}
               <div className="flex-1 p-4 space-y-3" style={{ background: 'var(--background-subtle)' }}>
                 <div>
-                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)' }}>To</label>
+                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>To</label>
                   <input
                     className="input w-full text-sm"
                     placeholder="vitalik.eth or 0x..."
-                    style={{ height: '36px', borderRadius: '8px' }}
+                    style={{ height: '36px', borderRadius: '8px', lineHeight: '34px', padding: '0 12px' }}
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)' }}>Subject</label>
+                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>Subject</label>
                   <input
                     className="input w-full text-sm"
                     placeholder="(optional)"
-                    style={{ height: '36px', borderRadius: '8px' }}
+                    style={{ height: '36px', borderRadius: '8px', lineHeight: '34px', padding: '0 12px' }}
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)' }}>Message</label>
+                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>Message</label>
                   <textarea
                     className="input w-full text-sm resize-none"
                     placeholder="Write your message..."
                     rows={6}
-                    style={{ borderRadius: '8px', padding: '10px' }}
+                    style={{ borderRadius: '8px', padding: '10px 12px' }}
                   />
                 </div>
               </div>
