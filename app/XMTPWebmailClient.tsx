@@ -1180,59 +1180,59 @@ const XMTPWebmailClient: React.FC = () => {
 
     return (
       <div className="min-h-dvh" style={{ background: 'var(--gradient-page)' }}>
-        <div className="mx-auto flex h-dvh max-w-6xl flex-col gap-4 p-4">
+        <div className="mx-auto flex h-dvh max-w-6xl flex-col gap-3 p-3">
           {/* Header */}
-          <header className="header-glass flex items-center justify-between px-5 animate-fade-in" style={{ borderRadius: 'var(--radius-xl)', height: 'var(--header-height)' }}>
+          <header className="header-glass flex items-center justify-between px-4 animate-fade-in" style={{ borderRadius: '12px', height: '56px' }}>
             {/* Left: Logo + Title */}
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl text-lg glow-sm" style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-glow-sm)' }}>
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg text-base" style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-glow-sm)' }}>
                 ✉️
               </div>
               <div>
-                <div className="text-base font-bold gradient-text">xmtp.mx</div>
-                <div className="text-[10px] flex items-center gap-1.5" style={{ color: 'var(--foreground-muted)' }}>
-                  <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: 'var(--accent-success)', boxShadow: '0 0 6px var(--accent-success)' }}></span>
+                <div className="text-sm font-bold gradient-text">xmtp.mx</div>
+                <div className="text-[10px] flex items-center gap-1" style={{ color: 'var(--foreground-muted)' }}>
+                  <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: 'var(--accent-success)', boxShadow: '0 0 4px var(--accent-success)' }}></span>
                   Synced {formatTimestamp(lastSyncTime)}
                 </div>
               </div>
-              <div className="ml-2 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
+              <div className="ml-1.5 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide" style={{ background: 'var(--gradient-accent)', color: 'white' }}>
                 Demo
               </div>
             </div>
 
             {/* Right: Theme Toggle + Settings + Identity */}
-            <div className="flex items-center gap-3">
-              {/* Theme Toggle - More Prominent */}
-              <div className="rounded-xl p-1.5 card-shiny" style={{ background: 'var(--surface-glass)' }}>
+            <div className="flex items-center gap-2">
+              {/* Theme Toggle */}
+              <div className="rounded-lg p-1 card-shiny" style={{ background: 'var(--surface-glass)' }}>
                 <ThemeToggle />
               </div>
 
               {/* Settings */}
               <button
                 type="button"
-                className="rounded-xl p-2.5 transition-all hover:scale-105"
+                className="rounded-lg p-1.5 transition-all hover:scale-105"
                 style={{ color: 'var(--foreground-muted)', background: 'var(--surface-glass)', border: '1px solid var(--border)' }}
                 title="Settings"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </button>
 
               {/* Divider */}
-              <div className="h-7 w-px rounded-full" style={{ background: 'var(--border)' }}></div>
+              <div className="h-6 w-px" style={{ background: 'var(--border)' }}></div>
 
               {/* Identity / Profile */}
-              <button type="button" className="flex items-center gap-3 rounded-xl px-3 py-2 transition-all hover:scale-[1.02]" style={{ background: 'var(--surface-glass)', border: '1px solid var(--border)' }}>
-                <div className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-glow-sm)' }}>
+              <button type="button" className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-all hover:scale-[1.02]" style={{ background: 'var(--surface-glass)', border: '1px solid var(--border)' }}>
+                <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: 'var(--gradient-accent)' }}>
                   DP
                 </div>
                 <div className="hidden sm:block text-left">
-                  <div className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>demo.eth</div>
-                  <div className="text-[10px] font-mono" style={{ color: 'var(--foreground-muted)' }}>0x71C7...1F3a</div>
+                  <div className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>demo.eth</div>
+                  <div className="text-[9px] font-mono" style={{ color: 'var(--foreground-muted)' }}>0x71C7...1F3a</div>
                 </div>
-                <svg className="h-4 w-4 hidden sm:block" style={{ color: 'var(--foreground-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-3.5 w-3.5 hidden sm:block" style={{ color: 'var(--foreground-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -1240,40 +1240,40 @@ const XMTPWebmailClient: React.FC = () => {
           </header>
 
           {/* Main Content */}
-          <div className="flex flex-1 gap-4 overflow-hidden">
+          <div className="flex flex-1 gap-3 overflow-hidden">
             {/* Sidebar */}
-            <aside className="flex w-[180px] shrink-0 flex-col animate-fade-in delay-1">
-              <div className="sidebar-glass" style={{ borderRadius: 'var(--radius-xl)', padding: 'var(--space-3)' }}>
-                <nav className="flex flex-col gap-2">
+            <aside className="flex w-[160px] shrink-0 flex-col animate-fade-in delay-1">
+              <div className="sidebar-glass" style={{ borderRadius: 'var(--radius-lg)', padding: '12px' }}>
+                <nav className="flex flex-col gap-1.5">
                   {/* Compose */}
                   <button
                     type="button"
-                    className="btn-primary flex items-center justify-center gap-2"
+                    className="btn-primary flex items-center justify-center gap-1.5"
                     style={{
-                      height: '44px',
-                      borderRadius: 'var(--radius-lg)',
-                      fontSize: 'var(--text-base)',
+                      height: '36px',
+                      borderRadius: '10px',
+                      fontSize: '13px',
                       fontWeight: 600
                     }}
                     onClick={() => setComposeOpen(true)}
                   >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path d="M12 4v16m8-8H4" />
                     </svg>
                     Compose
                   </button>
 
-                  <div className="my-2 h-px" style={{ background: 'var(--border)' }}></div>
+                  <div className="my-1.5 h-px" style={{ background: 'var(--border)' }}></div>
 
                   {/* Inbox */}
                   <button
                     onClick={() => setDemoView('inbox')}
-                    className="flex items-center gap-3 transition-all hover:translate-x-1"
+                    className="flex items-center gap-2 transition-all hover:translate-x-0.5"
                     style={{
-                      height: '42px',
-                      padding: '0 var(--space-3)',
-                      borderRadius: 'var(--radius-lg)',
-                      fontSize: 'var(--text-base)',
+                      height: '34px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
                       fontWeight: 500,
                       color: demoView === 'inbox' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'inbox' ? 'var(--primary-subtle)' : 'transparent',
@@ -1281,22 +1281,22 @@ const XMTPWebmailClient: React.FC = () => {
                       boxShadow: demoView === 'inbox' ? 'var(--shadow-glow-sm)' : 'none'
                     }}
                   >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z" />
                       <path d="M22 6l-10 7L2 6" />
                     </svg>
                     Inbox
-                    <span className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: 'var(--gradient-accent)', color: 'white' }}>{DEMO_CONVERSATIONS.length + 1}</span>
+                    <span className="ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: 'var(--gradient-accent)', color: 'white' }}>{DEMO_CONVERSATIONS.length + 1}</span>
                   </button>
                   {/* Sent */}
                   <button
                     onClick={() => setDemoView('sent')}
-                    className="flex items-center gap-3 transition-all hover:translate-x-1"
+                    className="flex items-center gap-2 transition-all hover:translate-x-0.5"
                     style={{
-                      height: '42px',
-                      padding: '0 var(--space-3)',
-                      borderRadius: 'var(--radius-lg)',
-                      fontSize: 'var(--text-base)',
+                      height: '34px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
                       fontWeight: 500,
                       color: demoView === 'sent' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'sent' ? 'var(--primary-subtle)' : 'transparent',
@@ -1304,7 +1304,7 @@ const XMTPWebmailClient: React.FC = () => {
                       boxShadow: demoView === 'sent' ? 'var(--shadow-glow-sm)' : 'none'
                     }}
                   >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                     Sent
@@ -1312,12 +1312,12 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Contacts */}
                   <button
                     onClick={() => setDemoView('contacts')}
-                    className="flex items-center gap-3 transition-all hover:translate-x-1"
+                    className="flex items-center gap-2 transition-all hover:translate-x-0.5"
                     style={{
-                      height: '42px',
-                      padding: '0 var(--space-3)',
-                      borderRadius: 'var(--radius-lg)',
-                      fontSize: 'var(--text-base)',
+                      height: '34px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
                       fontWeight: 500,
                       color: demoView === 'contacts' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'contacts' ? 'var(--primary-subtle)' : 'transparent',
@@ -1325,7 +1325,7 @@ const XMTPWebmailClient: React.FC = () => {
                       boxShadow: demoView === 'contacts' ? 'var(--shadow-glow-sm)' : 'none'
                     }}
                   >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     Contacts
@@ -1335,28 +1335,28 @@ const XMTPWebmailClient: React.FC = () => {
             </aside>
 
             {/* Mail List */}
-            <div className="flex min-w-0 flex-1 overflow-hidden card-shiny animate-fade-in delay-2" style={{ borderRadius: 'var(--radius-xl)' }}>
+            <div className="flex min-w-0 flex-1 overflow-hidden card-shiny animate-fade-in delay-2" style={{ borderRadius: '12px' }}>
               {demoView === 'contacts' ? (
                 /* Contacts View */
-                <div className="flex-1 overflow-y-auto p-6">
-                  <div className="mb-6">
-                    <h2 className="text-xl font-bold gradient-text">Contacts</h2>
-                    <p className="text-sm mt-1" style={{ color: 'var(--foreground-muted)' }}>People you&apos;ve messaged</p>
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="mb-4">
+                    <h2 className="text-lg font-bold gradient-text">Contacts</h2>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--foreground-muted)' }}>People you&apos;ve messaged</p>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {DEMO_CONVERSATIONS.map((c, idx) => (
                       <div
                         key={c.id}
-                        className="card-shiny flex items-center gap-4 p-4 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg animate-slide-up"
-                        style={{ borderRadius: 'var(--radius-xl)', animationDelay: `${idx * 50}ms` }}
+                        className="card-shiny flex items-center gap-3 p-3 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg animate-slide-up"
+                        style={{ borderRadius: '10px', animationDelay: `${idx * 50}ms` }}
                         onClick={() => { setDemoView('inbox'); setDemoSelectedId(c.id); }}
                       >
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
                           {(c.peerName || c.peerAddress).slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-bold" style={{ color: 'var(--foreground)' }}>{c.peerName || 'Unknown'}</div>
-                          <div className="truncate text-xs font-mono mt-0.5" style={{ color: 'var(--foreground-muted)' }}>{c.peerAddress}</div>
+                          <div className="truncate text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{c.peerName || 'Unknown'}</div>
+                          <div className="truncate text-[11px] font-mono" style={{ color: 'var(--foreground-muted)' }}>{c.peerAddress}</div>
                         </div>
                       </div>
                     ))}
@@ -1365,28 +1365,28 @@ const XMTPWebmailClient: React.FC = () => {
               ) : demoView === 'sent' ? (
                 /* Sent View */
                 <div className="flex-1 overflow-y-auto">
-                  <div className="flex items-center justify-between px-5 py-4 glass-strong" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <div className="flex items-center justify-between px-4 py-3 glass-strong" style={{ borderBottom: '1px solid var(--border)' }}>
                     <div>
-                      <div className="text-base font-bold gradient-text">Sent</div>
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--foreground-muted)' }}>Messages you&apos;ve sent</div>
+                      <div className="text-sm font-bold gradient-text">Sent</div>
+                      <div className="text-[11px]" style={{ color: 'var(--foreground-muted)' }}>Messages you&apos;ve sent</div>
                     </div>
                   </div>
-                  <div className="p-5 space-y-4">
+                  <div className="p-4 space-y-3">
                     {DEMO_CONVERSATIONS.map((c) => {
                       const sentMsgs = c.messages.filter(m => m.senderInboxId === 'self');
                       return sentMsgs.map((msg, idx) => (
                         <div
                           key={msg.id}
-                          className="card-shiny p-4 cursor-pointer transition-all hover:scale-[1.01] animate-slide-up"
-                          style={{ borderRadius: 'var(--radius-xl)', animationDelay: `${idx * 50}ms` }}
+                          className="card-shiny p-3 cursor-pointer transition-all hover:scale-[1.01] animate-slide-up"
+                          style={{ borderRadius: '10px', animationDelay: `${idx * 50}ms` }}
                           onClick={() => { setDemoView('inbox'); setDemoSelectedId(c.id); }}
                         >
-                          <div className="flex items-center justify-between gap-2 text-xs" style={{ color: 'var(--foreground-muted)' }}>
+                          <div className="flex items-center justify-between gap-2 text-[11px]" style={{ color: 'var(--foreground-muted)' }}>
                             <span>To: <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{c.peerName || c.peerAddress}</span></span>
                             <span className="font-mono">{formatTimestamp(msg.sentAt)}</span>
                           </div>
-                          {msg.subject && <div className="mt-2 text-sm font-bold" style={{ color: 'var(--foreground)' }}>{msg.subject}</div>}
-                          <div className="mt-2 text-sm truncate" style={{ color: 'var(--foreground-muted)' }}>{msg.content}</div>
+                          {msg.subject && <div className="mt-1.5 text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{msg.subject}</div>}
+                          <div className="mt-1.5 text-sm truncate" style={{ color: 'var(--foreground-muted)' }}>{msg.content}</div>
                         </div>
                       ));
                     })}
@@ -1396,20 +1396,21 @@ const XMTPWebmailClient: React.FC = () => {
                 /* Inbox View */
                 <div className="flex-1 overflow-y-auto">
                   {/* Search + Header */}
-                  <div className="flex items-center justify-between px-5 py-4 glass-strong" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <div className="flex items-center justify-between px-4 py-3 glass-strong" style={{ borderBottom: '1px solid var(--border)' }}>
                     <div>
-                      <div className="text-base font-bold gradient-text">Inbox</div>
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--foreground-muted)' }}>{DEMO_CONVERSATIONS.length + 1} messages</div>
+                      <div className="text-sm font-bold gradient-text">Inbox</div>
+                      <div className="text-[11px]" style={{ color: 'var(--foreground-muted)' }}>{DEMO_CONVERSATIONS.length + 1} messages</div>
                     </div>
                     <div className="relative">
-                      <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: 'var(--foreground-subtle)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--foreground-subtle)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                       <input
-                        className="input w-64 text-sm pl-10"
-                        placeholder="Search messages..."
+                        className="input w-52 text-sm pl-9"
+                        placeholder="Search..."
                         value={search}
                         onChange={(e) => setSearch(e.currentTarget.value)}
+                        style={{ height: '32px' }}
                       />
                     </div>
                   </div>
@@ -1419,19 +1420,19 @@ const XMTPWebmailClient: React.FC = () => {
                     {(!search || 'welcome xmtp team'.includes(search.toLowerCase())) && (
                       <button
                         type="button"
-                        className="inbox-row flex w-full items-center gap-4 px-5 py-4 text-left animate-fade-in"
+                        className="inbox-row flex w-full items-center gap-3 px-4 py-3 text-left animate-fade-in"
                         onClick={() => setDemoSelectedId(WELCOME_CONVERSATION_ID)}
                       >
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
-                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                           </svg>
                         </div>
-                        <div className="w-32 shrink-0 truncate font-bold text-sm" style={{ color: 'var(--foreground)' }}>XMTP Team</div>
+                        <div className="w-28 shrink-0 truncate font-semibold text-sm" style={{ color: 'var(--foreground)' }}>XMTP Team</div>
                         <div className="min-w-0 flex-1 truncate text-sm" style={{ color: 'var(--foreground-muted)' }}>Welcome to xmtp.mx — Your decentralized inbox</div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase" style={{ background: 'var(--accent-success-subtle)', color: 'var(--accent-success)' }}>New</span>
-                          <span className="text-xs font-mono" style={{ color: 'var(--foreground-subtle)' }}>Now</span>
+                          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase" style={{ background: 'var(--accent-success-subtle)', color: 'var(--accent-success)' }}>New</span>
+                          <span className="text-[11px] font-mono" style={{ color: 'var(--foreground-subtle)' }}>Now</span>
                         </div>
                       </button>
                     )}
@@ -1451,16 +1452,16 @@ const XMTPWebmailClient: React.FC = () => {
                           <button
                             type="button"
                             key={convo.id}
-                            className="inbox-row flex w-full items-center gap-4 px-5 py-4 text-left animate-fade-in"
+                            className="inbox-row flex w-full items-center gap-3 px-4 py-3 text-left animate-fade-in"
                             style={{ animationDelay: `${(idx + 1) * 50}ms` }}
                             onClick={() => setDemoSelectedId(convo.id)}
                           >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-transform hover:scale-110" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '2px solid var(--border)' }}>
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-transform hover:scale-105" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border)' }}>
                               {(convo.peerName || convo.peerAddress).slice(0, 2).toUpperCase()}
                             </div>
-                            <div className="w-32 shrink-0 truncate font-bold text-sm" style={{ color: 'var(--foreground)' }}>{convo.peerName || convo.peerAddress}</div>
+                            <div className="w-28 shrink-0 truncate font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{convo.peerName || convo.peerAddress}</div>
                             <div className="min-w-0 flex-1 truncate text-sm" style={{ color: 'var(--foreground-muted)' }}>{subject}</div>
-                            <div className="text-xs font-mono shrink-0" style={{ color: 'var(--foreground-subtle)' }}>{formatTimestamp(convo.lastMessageAt)}</div>
+                            <div className="text-[11px] font-mono shrink-0" style={{ color: 'var(--foreground-subtle)' }}>{formatTimestamp(convo.lastMessageAt)}</div>
                           </button>
                         );
                       })}
@@ -1472,13 +1473,13 @@ const XMTPWebmailClient: React.FC = () => {
             {/* Thread Modal Overlay */}
             {demoSelectedId && (
               <div
-                className="fixed inset-0 z-50 flex items-center justify-center p-6 animate-fade-in"
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
                 style={{ background: 'var(--overlay)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
                 onClick={() => setDemoSelectedId(null)}
               >
                 <div
-                  className="modal-glass w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-scale-in"
-                  style={{ borderRadius: 'var(--radius-2xl)' }}
+                  className="modal-glass w-full max-w-2xl flex flex-col overflow-hidden animate-scale-in"
+                  style={{ borderRadius: 'var(--radius-2xl)', height: '600px', maxHeight: 'calc(100vh - 2rem)' }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {selectedDemo && 'kind' in selectedDemo && selectedDemo.kind === 'welcome' ? (
@@ -1486,19 +1487,19 @@ const XMTPWebmailClient: React.FC = () => {
                   ) : selectedDemo && !('kind' in selectedDemo) ? (
                     <>
                       {/* Modal Header */}
-                      <div className="flex items-center justify-between px-6 py-4 glass-strong" style={{ borderBottom: '1px solid var(--border)' }}>
-                        <div className="flex items-center gap-4">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
+                      <div className="flex items-center justify-between px-4 py-3 glass-strong shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
                             {(selectedDemo.peerName || selectedDemo.peerAddress).slice(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <div className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>{selectedDemo.peerName || selectedDemo.peerAddress}</div>
-                            <div className="flex items-center gap-2 text-xs mt-0.5" style={{ color: 'var(--foreground-muted)' }}>
+                            <div className="text-base font-bold" style={{ color: 'var(--foreground)' }}>{selectedDemo.peerName || selectedDemo.peerAddress}</div>
+                            <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--foreground-muted)' }}>
                               <span className="flex items-center gap-1">
-                                <svg className="h-3.5 w-3.5" style={{ color: 'var(--accent-success)' }} fill="currentColor" viewBox="0 0 24 24">
+                                <svg className="h-3 w-3" style={{ color: 'var(--accent-success)' }} fill="currentColor" viewBox="0 0 24 24">
                                   <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
                                 </svg>
-                                End-to-end encrypted
+                                Encrypted
                               </span>
                               <span>•</span>
                               <span>{selectedDemo.messages.length} messages</span>
@@ -1507,37 +1508,37 @@ const XMTPWebmailClient: React.FC = () => {
                         </div>
                         <button
                           type="button"
-                          className="rounded-xl p-2.5 transition-all hover:scale-110"
+                          className="rounded-lg p-2 transition-all hover:scale-110"
                           style={{ color: 'var(--foreground-muted)', background: 'var(--surface-glass)', border: '1px solid var(--border)' }}
                           onClick={() => setDemoSelectedId(null)}
                         >
-                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
                       </div>
                       {/* Modal Body - Messages */}
-                      <div className="flex-1 overflow-y-auto px-6 py-5" style={{ background: 'var(--background-subtle)' }}>
-                        <div className="space-y-4">
+                      <div className="flex-1 overflow-y-auto px-4 py-4" style={{ background: 'var(--background-subtle)' }}>
+                        <div className="space-y-3">
                           {selectedDemo.messages.map((msg, idx) => {
                             const isSelf = msg.senderInboxId === 'self';
                             return (
                               <div key={msg.id} className={`flex animate-slide-up ${isSelf ? 'justify-end' : 'justify-start'}`} style={{ animationDelay: `${idx * 50}ms` }}>
                                 <div
-                                  className="card-shiny max-w-[420px] px-5 py-4"
+                                  className="max-w-[360px] px-4 py-3"
                                   style={{
                                     background: isSelf ? 'var(--gradient-accent)' : 'var(--surface)',
                                     border: isSelf ? 'none' : '1px solid var(--border)',
-                                    borderRadius: isSelf ? 'var(--radius-xl) var(--radius-xl) var(--radius-sm) var(--radius-xl)' : 'var(--radius-xl) var(--radius-xl) var(--radius-xl) var(--radius-sm)',
-                                    boxShadow: isSelf ? 'var(--shadow-glow-sm)' : 'var(--shadow-md)'
+                                    borderRadius: isSelf ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                                    boxShadow: isSelf ? 'var(--shadow-glow-sm)' : 'var(--shadow-sm)'
                                   }}
                                 >
-                                  <div className="mb-2 flex items-center justify-between gap-4 text-xs" style={{ color: isSelf ? 'rgba(255,255,255,0.8)' : 'var(--foreground-muted)' }}>
-                                    <div className="font-bold">{isSelf ? 'You' : (selectedDemo.peerName || 'Peer')}</div>
+                                  <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px]" style={{ color: isSelf ? 'rgba(255,255,255,0.8)' : 'var(--foreground-muted)' }}>
+                                    <div className="font-semibold">{isSelf ? 'You' : (selectedDemo.peerName || 'Peer')}</div>
                                     <div className="font-mono">{formatTimestamp(msg.sentAt)}</div>
                                   </div>
                                   {msg.isEmail && msg.subject && (
-                                    <div className="mb-2 text-sm font-bold" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>{msg.subject}</div>
+                                    <div className="mb-1.5 text-sm font-semibold" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>{msg.subject}</div>
                                   )}
                                   <div className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>{msg.content}</div>
                                 </div>
@@ -1547,21 +1548,21 @@ const XMTPWebmailClient: React.FC = () => {
                         </div>
                       </div>
                       {/* Modal Footer - Reply */}
-                      <div className="px-6 py-4 glass-strong" style={{ borderTop: '1px solid var(--border)' }}>
-                        <div className="flex gap-3">
+                      <div className="px-4 py-3 glass-strong shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+                        <div className="flex gap-2">
                           <input
                             className="input flex-1 text-sm"
                             placeholder="Reply... (demo mode)"
                             disabled
-                            style={{ height: '44px' }}
+                            style={{ height: '40px' }}
                           />
                           <button
                             type="button"
-                            className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:transform-none"
-                            style={{ height: '44px', paddingLeft: '1.25rem', paddingRight: '1.25rem' }}
+                            className="btn-primary flex items-center gap-1.5 disabled:opacity-50 disabled:transform-none"
+                            style={{ height: '40px', paddingLeft: '1rem', paddingRight: '1rem' }}
                             disabled
                           >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                             </svg>
                             Send
