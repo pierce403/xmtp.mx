@@ -98,3 +98,4 @@ npm run preview
 - Wins: Merge conflict on `origin/copilot/sub-pr-10` resolved, verified via `npm run build`, then fast-forwarded into `main`.
 - Misses: Next’s lockfile detection can pick up a `bun.lock` in a parent dir (e.g. `/home/pierce/bun.lock`) and warn “Found multiple lockfiles”; remove/rename the parent lockfile (or build from a clean path) to avoid confusion.
 - Misses: TypeScript can error on duplicate keys when spreading an object that includes `kind`/`id` into an object literal that also sets them; strip `kind` + `id` before spreading (see `app/XMTPWebmailClient.tsx` upsert helper).
+- Misses: WalletConnect can log `Error: emitting session_request:<id> without any listeners` (from `@walletconnect/sign-client`) during thirdweb auto-connect; disable `autoConnect` on `ConnectButton` to stop the noisy auto-connect path.

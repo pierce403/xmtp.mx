@@ -1183,7 +1183,7 @@ const XMTPWebmailClient: React.FC = () => {
         <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
         <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
           <h1 className="text-2xl font-bold">xmtp.mx</h1>
-          <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} />
+	          <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} autoConnect={false} />
           {xmtpError && <p className="text-sm text-red-600">{xmtpError}</p>}
           <StartupStatusPanel
             xmtpEnv={xmtpEnv}
@@ -1274,7 +1274,7 @@ const XMTPWebmailClient: React.FC = () => {
             <div className="flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1 text-[12px] font-semibold text-neutral-700 ring-1 ring-black/5">
               <span className="h-2 w-2 rounded-full bg-emerald-500" /> XMTP {xmtpEnv}
             </div>
-            <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} />
+	            <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} autoConnect={false} />
           </div>
         </header>
 
