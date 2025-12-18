@@ -1327,7 +1327,7 @@ const XMTPWebmailClient: React.FC = () => {
             </div>
 
             <div className="rounded-3xl p-4 text-xs backdrop-blur-md" style={{ background: 'var(--card-bg)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-subtle)', color: 'var(--foreground-muted)' }}>
-              <div className="font-semibold" style={{ color: 'var(--foreground)' }}>What's XMTP mail?</div>
+              <div className="font-semibold" style={{ color: 'var(--foreground)' }}>What&apos;s XMTP mail?</div>
               <p className="mt-1 leading-relaxed">Threads here are encrypted on XMTP and render like email. No servers or IMAP folders — just wallet-linked messaging.</p>
             </div>
           </aside>
