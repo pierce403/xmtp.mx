@@ -10,10 +10,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@xmtp/browser-sdk": "^5.3.0",
     "@xmtp/content-type-reaction": "1.1.12",
     "@xmtp/content-type-remote-attachment": "1.1.12",
     "@xmtp/content-type-reply": "1.1.12",
-    "@xmtp/react-sdk": "9.0.0",
     "@xmtp/user-preferences-bindings-wasm": "0.3.6",
     "@xmtp/xmtp-js": "12.1.0",
     "copy-webpack-plugin": "13.0.1",

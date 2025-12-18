@@ -2,15 +2,15 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  type CachedConversation,
-  type ContentTypeMetadata,
-  useClient,
-  useConversations,
-  useLastMessage,
-  useMessages,
-  useSendMessage,
-  useStartConversation,
-} from '@xmtp/react-sdk';
+  Client,
+  ConsentState,
+  ConversationType,
+  DecodedMessage,
+  Dm,
+  Identifier,
+  IdentifierKind,
+  SortDirection,
+} from '@xmtp/browser-sdk';
 import { ethers } from 'ethers';
 import { useActiveAccount, useActiveWallet, ConnectButton } from 'thirdweb/react';
 import { EIP1193 } from 'thirdweb/wallets';
@@ -19,11 +19,18 @@ import { THIRDWEB_CLIENT_ID, thirdwebAppMetadata, thirdwebClient } from '@/lib/t
 import { decodeXmtpEmail, encodeXmtpEmailV1 } from '@/lib/xmtpEmail';
 import { isHexAddress, parseRecipient, shortenAddress } from '@/lib/xmtpAddressing';
 
-type Conversation = CachedConversation<ContentTypeMetadata>;
-
 type ThirdwebClientIdStatus = 'missing' | 'checking' | 'valid' | 'invalid';
 
 type StartupStatusTone = 'ok' | 'pending' | 'error' | 'neutral';
+
+type InboxDetailsMap = Record<string, { address?: string; identifiers?: Identifier[] }>; 
+
+type ConversationSummary = {
+  conversation: Dm;
+  peerInboxId?: string;
+  peerAddress?: string;
+  lastMessage?: DecodedMessage;
+};
 
 function toneDotClass(tone: StartupStatusTone) {
   switch (tone) {
@@ -36,6 +43,22 @@ function toneDotClass(tone: StartupStatusTone) {
     default:
       return 'bg-neutral-300';
   }
+}
+
+function nsToDate(ns?: bigint) {
+  if (!ns) return undefined;
+  return new Date(Number(ns / 1_000_000n));
+}
+
+function findEthereumAddress(identifiers: Identifier[] | undefined) {
+  if (!identifiers) return undefined;
+  const eth = identifiers.find((id) => id.identifierKind === IdentifierKind.Ethereum);
+  return eth?.identifier;
+}
+
+function shortenInboxId(inboxId: string) {
+  if (inboxId.length <= 10) return inboxId;
+  return `${inboxId.slice(0, 6)}…${inboxId.slice(-4)}`;
 }
 
 function StartupStatusPanel({
@@ -251,86 +274,48 @@ function formatTimestamp(date?: Date): string {
     : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
 }
 
-function ConversationRow({
-  conversation,
-  isSelected,
-  onSelect,
-}: {
-  conversation: Conversation;
-  isSelected: boolean;
-  onSelect: (conversation: Conversation) => void;
-}) {
-  const lastMessage = useLastMessage(conversation.topic);
-  const decoded = decodeXmtpEmail(lastMessage?.content);
-  const subject =
-    decoded.kind === 'email' ? decoded.email.subject : (decoded.text.split('\n')[0]?.trim() ?? '');
-  const snippet = decoded.kind === 'email' ? decoded.email.body : decoded.text;
-
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(conversation)}
-      className={[
-        'w-full border-b px-4 py-3 text-left',
-        'transition-colors',
-        isSelected ? 'bg-blue-50' : 'bg-white hover:bg-neutral-50',
-      ].join(' ')}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-neutral-900">
-            {shortenAddress(conversation.peerAddress)}
-          </div>
-          <div className="truncate text-sm text-neutral-700">{subject || '(no subject)'}</div>
-          <div className="truncate text-xs text-neutral-500">{snippet}</div>
-        </div>
-        <div className="shrink-0 pt-0.5 text-[11px] text-neutral-500">{formatTimestamp(lastMessage?.sentAt)}</div>
-      </div>
-    </button>
-  );
-}
-
-function Thread({
-  conversation,
-  selfAddress,
-  onReply,
-}: {
-  conversation: Conversation;
-  selfAddress: string;
+type ThreadProps = {
+  conversation: Dm;
+  messages: DecodedMessage[];
+  selfInboxId?: string;
+  inboxDetails: InboxDetailsMap;
   onReply: (options: { subject?: string; body: string }) => Promise<void>;
-}) {
-  const { messages } = useMessages(conversation);
-  const [replyBody, setReplyBody] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+};
 
-  const lastEmailSubject = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      const decoded = decodeXmtpEmail(messages[i]?.content);
-      if (decoded.kind === 'email' && decoded.email.subject.trim()) return decoded.email.subject.trim();
-    }
-    return undefined;
-  }, [messages]);
+function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply }: ThreadProps) {
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const [replyBody, setReplyBody] = useState('');
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, [conversation.topic, messages.length]);
-
-  const handleSendReply = async () => {
-    const body = replyBody.trim();
-    if (!body) return;
-
-    setIsSending(true);
     setSendError(null);
     setReplyBody('');
+  }, [conversation.id]);
 
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const senderLabel = useCallback(
+    (inboxId: string) => {
+      if (selfInboxId && inboxId === selfInboxId) return 'You';
+      const detail = inboxDetails[inboxId];
+      if (detail?.address) return shortenAddress(detail.address);
+      return shortenInboxId(inboxId);
+    },
+    [inboxDetails, selfInboxId],
+  );
+
+  const handleSendReply = async () => {
+    if (!replyBody.trim()) return;
+    setSendError(null);
+    setIsSending(true);
     try {
-      const subject = lastEmailSubject ? `Re: ${lastEmailSubject}` : undefined;
-      await onReply({ subject, body });
+      await onReply({ body: replyBody });
+      setReplyBody('');
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'Failed to send.');
-      setReplyBody(body);
     } finally {
       setIsSending(false);
     }
@@ -339,7 +324,7 @@ function Thread({
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
       <div className="border-b px-5 py-4">
-        <div className="text-sm font-semibold text-neutral-900">{shortenAddress(conversation.peerAddress)}</div>
+        <div className="text-sm font-semibold text-neutral-900">{shortenInboxId(conversation.id)}</div>
         <div className="text-xs text-neutral-500">XMTP thread</div>
       </div>
 
@@ -349,8 +334,9 @@ function Thread({
         ) : (
           <div className="space-y-3">
             {messages.map((message) => {
-              const isSelf = message.senderAddress.toLowerCase() === selfAddress.toLowerCase();
+              const isSelf = selfInboxId ? message.senderInboxId === selfInboxId : false;
               const decoded = decodeXmtpEmail(message.content);
+              const sentAt = nsToDate(message.sentAtNs);
 
               return (
                 <div key={message.id} className={['flex', isSelf ? 'justify-end' : 'justify-start'].join(' ')}>
@@ -361,8 +347,8 @@ function Thread({
                     ].join(' ')}
                   >
                     <div className="mb-2 flex items-center justify-between gap-4 text-xs text-neutral-500">
-                      <div className="truncate">{isSelf ? 'You' : shortenAddress(message.senderAddress)}</div>
-                      <div className="shrink-0">{formatTimestamp(message.sentAt)}</div>
+                      <div className="truncate">{isSelf ? 'You' : senderLabel(message.senderInboxId)}</div>
+                      <div className="shrink-0">{formatTimestamp(sentAt)}</div>
                     </div>
 
                     {decoded.kind === 'email' ? (
@@ -412,7 +398,6 @@ const XMTPWebmailClient: React.FC = () => {
   const [wasmError, setWasmError] = useState<string | null>(null);
   const [wasmInitStalled, setWasmInitStalled] = useState(false);
   const [xmtpInitStalled, setXmtpInitStalled] = useState(false);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [thirdwebClientIdStatus, setThirdwebClientIdStatus] = useState<ThirdwebClientIdStatus>(() =>
     (THIRDWEB_CLIENT_ID ?? '').trim() ? 'checking' : 'missing',
   );
@@ -424,11 +409,21 @@ const XMTPWebmailClient: React.FC = () => {
   const [composeError, setComposeError] = useState<string | null>(null);
   const [composeIsSending, setComposeIsSending] = useState(false);
   const [search, setSearch] = useState('');
+  const [xmtpClient, setXmtpClient] = useState<Client | null>(null);
+  const [xmtpError, setXmtpError] = useState<string | null>(null);
+  const [xmtpLoading, setXmtpLoading] = useState(false);
+  const [conversationsById, setConversationsById] = useState<Record<string, ConversationSummary>>({});
+  const [messagesByConversation, setMessagesByConversation] = useState<Record<string, DecodedMessage[]>>({});
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [inboxDetails, setInboxDetails] = useState<InboxDetailsMap>({});
 
-  const { client, initialize, isLoading, error } = useClient();
-  const { conversations: xmtpConversations } = useConversations();
-  const { sendMessage } = useSendMessage();
-  const { startConversation } = useStartConversation();
+  const inboxDetailsRef = useRef(inboxDetails);
+  useEffect(() => {
+    inboxDetailsRef.current = inboxDetails;
+  }, [inboxDetails]);
+
+  const messageStreamRef = useRef<AsyncIterator<DecodedMessage> | null>(null);
+  const conversationStreamRef = useRef<AsyncIterator<Dm> | null>(null);
 
   const xmtpEnv = (process.env.NEXT_PUBLIC_XMTP_ENV ?? 'production') as 'local' | 'dev' | 'production';
 
@@ -455,8 +450,11 @@ const XMTPWebmailClient: React.FC = () => {
 
   const activeAddress = activeAccount?.address;
   const hasActiveWallet = Boolean(activeWallet);
-  const clientAddress = client?.address;
-  const clientError = error?.message;
+  const clientAddress = useMemo(() => {
+    const identifier = xmtpClient?.accountIdentifier;
+    if (identifier?.identifierKind === IdentifierKind.Ethereum) return identifier.identifier;
+    return undefined;
+  }, [xmtpClient]);
 
   useEffect(() => {
     if (!debugEnabled) return;
@@ -474,27 +472,27 @@ const XMTPWebmailClient: React.FC = () => {
       wasmReady: isWasmInitialized,
       wasmInitStalled,
       wasmError,
-      xmtpLoading: isLoading,
+      xmtpLoading,
       xmtpInitStalled,
-      xmtpError: clientError,
+      xmtpError,
       clientAddress,
-      conversations: xmtpConversations.length,
+      conversations: Object.keys(conversationsById).length,
     });
   }, [
     activeAddress,
     clientAddress,
-    clientError,
     debug,
     hasActiveWallet,
-    isLoading,
     isWasmInitialized,
     wasmInitStalled,
     thirdwebClientIdError,
     thirdwebClientIdStatus,
     wasmError,
     xmtpInitStalled,
-    xmtpConversations.length,
     xmtpEnv,
+    xmtpError,
+    xmtpLoading,
+    conversationsById,
   ]);
 
   useEffect(() => {
@@ -590,6 +588,127 @@ const XMTPWebmailClient: React.FC = () => {
     void init();
   }, [debug]);
 
+  const resolveInboxAddress = useCallback(
+    async (inboxId?: string) => {
+      if (!inboxId) return undefined;
+      const existing = inboxDetailsRef.current[inboxId];
+      if (existing?.address || existing?.identifiers) return existing?.address ?? findEthereumAddress(existing.identifiers);
+      try {
+        const states = await Client.inboxStateFromInboxIds([inboxId], xmtpEnv);
+        const state = states?.[0];
+        const address = findEthereumAddress(state?.identifiers ?? state?.accountIdentifiers);
+        setInboxDetails((prev) => ({
+          ...prev,
+          [inboxId]: {
+            address,
+            identifiers: (state as { identifiers?: Identifier[] })?.identifiers ?? (state as { accountIdentifiers?: Identifier[] })?.accountIdentifiers,
+          },
+        }));
+        return address;
+      } catch (err) {
+        debug('failed to resolve inbox address', err);
+        return undefined;
+      }
+    },
+    [debug, xmtpEnv],
+  );
+
+  const upsertConversationSummary = useCallback((summary: ConversationSummary) => {
+    setConversationsById((prev) => {
+      const existing = prev[summary.conversation.id];
+      return {
+        ...prev,
+        [summary.conversation.id]: {
+          ...existing,
+          ...summary,
+        },
+      };
+    });
+  }, []);
+
+  const loadConversationPeers = useCallback(
+    async (conversation: Dm) => {
+      try {
+        const peerInboxId = await conversation.peerInboxId();
+        const peerAddress = await resolveInboxAddress(peerInboxId);
+        return { peerInboxId, peerAddress };
+      } catch (err) {
+        debug('failed to load peer inbox', err);
+        return { peerInboxId: undefined, peerAddress: undefined };
+      }
+    },
+    [debug, resolveInboxAddress],
+  );
+
+  const loadConversations = useCallback(async () => {
+    if (!xmtpClient) return;
+    try {
+      const convos = await xmtpClient.conversations.list({
+        conversationType: ConversationType.Dm,
+        consentStates: [ConsentState.Allowed],
+      });
+
+      const hydrated = await Promise.all(
+        convos.map(async (conversation) => {
+          const [peerInfo, lastMessage] = await Promise.all([
+            loadConversationPeers(conversation as Dm),
+            (conversation as Dm).lastMessage().catch(() => undefined),
+          ]);
+          return {
+            conversation: conversation as Dm,
+            lastMessage: lastMessage ?? undefined,
+            peerInboxId: peerInfo.peerInboxId,
+            peerAddress: peerInfo.peerAddress,
+          } satisfies ConversationSummary;
+        }),
+      );
+
+      setConversationsById((prev) => {
+        const next = { ...prev };
+        for (const summary of hydrated) {
+          next[summary.conversation.id] = summary;
+        }
+        return next;
+      });
+    } catch (err) {
+      debug('failed to load conversations', err);
+    }
+  }, [debug, loadConversationPeers, xmtpClient]);
+
+  const addMessages = useCallback((conversationId: string, incoming: DecodedMessage | DecodedMessage[]) => {
+    setMessagesByConversation((prev) => {
+      const nextMessages = { ...prev };
+      const existing = nextMessages[conversationId] ?? [];
+      const incomingArray = Array.isArray(incoming) ? incoming : [incoming];
+      const merged = [...existing];
+      for (const msg of incomingArray) {
+        if (merged.find((m) => m.id === msg.id)) continue;
+        merged.push(msg);
+      }
+      merged.sort((a, b) => Number(a.sentAtNs - b.sentAtNs));
+      nextMessages[conversationId] = merged;
+      return nextMessages;
+    });
+  }, []);
+
+  const loadMessagesForConversation = useCallback(
+    async (conversation: Dm) => {
+      try {
+        const messages = await conversation.messages({
+          direction: SortDirection.SORT_DIRECTION_ASCENDING,
+        });
+        addMessages(conversation.id, messages);
+        const last = messages.at(-1);
+        if (last) {
+          upsertConversationSummary({ conversation, lastMessage: last });
+        }
+      } catch (err) {
+        debug('failed to load messages', err);
+      }
+    },
+    [addMessages, debug, upsertConversationSummary],
+  );
+
   const initializeXmtpClient = useCallback(async () => {
     if (!thirdwebClient) {
       debug('XMTP init skipped: missing thirdweb client');
@@ -603,11 +722,11 @@ const XMTPWebmailClient: React.FC = () => {
       debug('XMTP init skipped: WASM not ready');
       return;
     }
-    if (client) {
-      debug('XMTP init skipped: client already initialized', { clientAddress: client.address });
+    if (xmtpClient) {
+      debug('XMTP init skipped: client already initialized', { clientAddress });
       return;
     }
-    if (isLoading) {
+    if (xmtpLoading) {
       debug('XMTP init skipped: already initializing');
       return;
     }
@@ -616,6 +735,8 @@ const XMTPWebmailClient: React.FC = () => {
     let warnTimer: ReturnType<typeof setTimeout> | undefined;
     try {
       setXmtpInitStalled(false);
+      setXmtpLoading(true);
+      setXmtpError(null);
       const chain = activeWallet.getChain() ?? ethereum;
       debug('XMTP init starting', { env: xmtpEnv, chainId: chain.id, chainName: chain.name });
       const eip1193Provider = EIP1193.toProvider({
@@ -626,36 +747,161 @@ const XMTPWebmailClient: React.FC = () => {
 
       const provider = new ethers.BrowserProvider(eip1193Provider as ethers.Eip1193Provider);
       const signer = await provider.getSigner();
+      const address = await signer.getAddress();
       warnTimer = setTimeout(() => {
         setXmtpInitStalled(true);
         debug('XMTP init still pending after 10s');
       }, 10_000);
-      const xmtpClient = await initialize({ signer, options: { env: xmtpEnv } });
-      debug('XMTP init resolved', { address: xmtpClient?.address });
+
+      const xmtpSigner = {
+        type: 'EOA' as const,
+        getIdentifier: () => ({ identifier: address, identifierKind: IdentifierKind.Ethereum }),
+        signMessage: async (message: string) => {
+          const signature = await signer.signMessage(message);
+          return ethers.getBytes(signature);
+        },
+      };
+
+      const client = await Client.create(xmtpSigner, { env: xmtpEnv });
+      setXmtpClient(client);
+      debug('XMTP init resolved', { inboxId: client.inboxId, address });
       debug('XMTP init completed', { ms: Date.now() - startedAt });
+      await loadConversations();
+      if (client.inboxId) {
+        setInboxDetails((prev) => ({ ...prev, [client.inboxId!]: { address } }));
+      }
     } catch (err) {
       console.error('Error initializing XMTP client:', err);
       debug('XMTP init error', err);
       debug('XMTP init failed', { ms: Date.now() - startedAt });
+      setXmtpError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
     } finally {
       if (warnTimer) clearTimeout(warnTimer);
+      setXmtpLoading(false);
     }
-  }, [activeWallet, client, debug, initialize, isLoading, isWasmInitialized, xmtpEnv]);
+  }, [
+    activeWallet,
+    clientAddress,
+    debug,
+    isWasmInitialized,
+    loadConversations,
+    xmtpClient,
+    xmtpEnv,
+    xmtpLoading,
+  ]);
 
   useEffect(() => {
     void initializeXmtpClient();
   }, [initializeXmtpClient]);
 
   useEffect(() => {
-    if (selectedConversation || xmtpConversations.length === 0) return;
-    debug('auto-selecting first conversation', { count: xmtpConversations.length });
-    setSelectedConversation(xmtpConversations[0] ?? null);
-  }, [debug, selectedConversation, xmtpConversations]);
+    if (selectedConversationId) return;
+    const first = Object.values(conversationsById).sort((a, b) => {
+      const aTime = a.lastMessage ? Number(a.lastMessage.sentAtNs) : Number(a.conversation.createdAtNs ?? 0n);
+      const bTime = b.lastMessage ? Number(b.lastMessage.sentAtNs) : Number(b.conversation.createdAtNs ?? 0n);
+      return bTime - aTime;
+    })[0];
+    if (first) setSelectedConversationId(first.conversation.id);
+  }, [conversationsById, selectedConversationId]);
 
   useEffect(() => {
-    if (!clientAddress) return;
-    debug('client ready', { address: clientAddress });
-  }, [clientAddress, debug]);
+    if (!xmtpClient) {
+      setConversationsById({});
+      setMessagesByConversation({});
+      setSelectedConversationId(null);
+      return;
+    }
+  }, [xmtpClient]);
+
+  useEffect(() => {
+    if (!xmtpClient) return;
+    void loadConversations();
+  }, [loadConversations, xmtpClient]);
+
+  useEffect(() => {
+    if (!xmtpClient) return;
+    let isMounted = true;
+
+    const startStreams = async () => {
+      try {
+        const convoStream = await xmtpClient.conversations.streamDms({
+          onValue: (dm) => {
+            void loadConversationPeers(dm).then((peerInfo) => {
+              if (!isMounted) return;
+              upsertConversationSummary({ conversation: dm, peerAddress: peerInfo.peerAddress, peerInboxId: peerInfo.peerInboxId });
+            });
+          },
+        });
+        conversationStreamRef.current = convoStream as AsyncIterator<Dm>;
+
+        const messageStream = await xmtpClient.conversations.streamAllMessages({
+          conversationType: ConversationType.Dm,
+          consentStates: [ConsentState.Allowed],
+          onValue: async (message) => {
+            const conversationId = message.conversationId;
+            const existingConversation = conversationsById[conversationId]?.conversation;
+            if (!existingConversation) {
+              const fetched = await xmtpClient.conversations.getConversationById(conversationId);
+              if (fetched && fetched instanceof Dm) {
+                const peerInfo = await loadConversationPeers(fetched);
+                upsertConversationSummary({ conversation: fetched, peerAddress: peerInfo.peerAddress, peerInboxId: peerInfo.peerInboxId, lastMessage: message });
+              }
+            } else {
+              upsertConversationSummary({ conversation: existingConversation, lastMessage: message });
+            }
+            addMessages(conversationId, message);
+            await resolveInboxAddress(message.senderInboxId);
+          },
+        });
+        messageStreamRef.current = messageStream as AsyncIterator<DecodedMessage>;
+      } catch (err) {
+        debug('failed to start streams', err);
+      }
+    };
+
+    void startStreams();
+
+    return () => {
+      isMounted = false;
+      void conversationStreamRef.current?.return?.();
+      void messageStreamRef.current?.return?.();
+      conversationStreamRef.current = null;
+      messageStreamRef.current = null;
+    };
+  }, [addMessages, conversationsById, debug, loadConversationPeers, resolveInboxAddress, upsertConversationSummary, xmtpClient]);
+
+  useEffect(() => {
+    const timer = xmtpLoading
+      ? setTimeout(() => {
+          setXmtpInitStalled(true);
+        }, 10_000)
+      : undefined;
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [xmtpLoading]);
+
+  const conversationList = useMemo(() => {
+    const list = Object.values(conversationsById);
+    const filtered = list.filter((c) => {
+      const label = c.peerAddress ?? c.peerInboxId ?? c.conversation.id;
+      return label.toLowerCase().includes(search.trim().toLowerCase());
+    });
+    return filtered.sort((a, b) => {
+      const aTime = a.lastMessage ? Number(a.lastMessage.sentAtNs) : Number(a.conversation.createdAtNs ?? 0n);
+      const bTime = b.lastMessage ? Number(b.lastMessage.sentAtNs) : Number(b.conversation.createdAtNs ?? 0n);
+      return bTime - aTime;
+    });
+  }, [conversationsById, search]);
+
+  const selectedConversation = selectedConversationId ? conversationsById[selectedConversationId]?.conversation ?? null : null;
+  const selectedMessages = selectedConversationId ? messagesByConversation[selectedConversationId] ?? [] : [];
+
+  useEffect(() => {
+    if (!selectedConversation) return;
+    if (messagesByConversation[selectedConversation.id]?.length) return;
+    void loadMessagesForConversation(selectedConversation);
+  }, [loadMessagesForConversation, messagesByConversation, selectedConversation]);
 
   const ensProvider = useMemo(() => {
     const rpcUrl = process.env.NEXT_PUBLIC_MAINNET_RPC_URL;
@@ -673,18 +919,21 @@ const XMTPWebmailClient: React.FC = () => {
   };
 
   const handleSendReply = async (options: { subject?: string; body: string }) => {
-    if (!client || !selectedConversation) return;
-    const payload = encodeXmtpEmailV1({
-      subject: options.subject ?? '',
-      body: options.body,
-      from: client.address,
-      to: selectedConversation.peerAddress,
-    });
-    await sendMessage(selectedConversation, payload);
+    if (!xmtpClient || !selectedConversationId) return;
+    const summary = conversationsById[selectedConversationId];
+    if (!summary) return;
+    await summary.conversation.send(
+      encodeXmtpEmailV1({
+        subject: options.subject ?? '',
+        body: options.body,
+        from: clientAddress,
+        to: summary.peerAddress ?? summary.peerInboxId ?? selectedConversationId,
+      }),
+    );
   };
 
   const handleComposeSend = async () => {
-    if (!client) return;
+    if (!xmtpClient) return;
 
     setComposeIsSending(true);
     setComposeError(null);
@@ -705,14 +954,19 @@ const XMTPWebmailClient: React.FC = () => {
       const payload = encodeXmtpEmailV1({
         subject: composeSubject.trim() || '(no subject)',
         body: composeBody,
-        from: client.address,
+        from: clientAddress,
         to: composeTo.trim(),
       });
 
-      const { cachedConversation } = await startConversation(peerAddress, payload);
-      if (cachedConversation) {
-        setSelectedConversation(cachedConversation as Conversation);
-      }
+      const dm = await xmtpClient.conversations.newDmWithIdentifier({
+        identifier: peerAddress,
+        identifierKind: IdentifierKind.Ethereum,
+      });
+      await dm.send(payload);
+      const peerInfo = await loadConversationPeers(dm);
+      upsertConversationSummary({ conversation: dm, peerAddress: peerInfo.peerAddress, peerInboxId: peerInfo.peerInboxId, lastMessage: undefined });
+      await loadMessagesForConversation(dm);
+      setSelectedConversationId(dm.id);
 
       setComposeOpen(false);
       setComposeTo('');
@@ -743,11 +997,11 @@ const XMTPWebmailClient: React.FC = () => {
               isWasmInitialized={isWasmInitialized}
               wasmInitStalled={wasmInitStalled}
               wasmError={wasmError}
-              isLoading={isLoading}
+              isLoading={xmtpLoading}
               xmtpInitStalled={xmtpInitStalled}
-              clientError={clientError}
+              clientError={xmtpError ?? undefined}
               clientAddress={clientAddress}
-              conversationsCount={xmtpConversations.length}
+              conversationsCount={conversationList.length}
             />
           </div>
         </div>
@@ -773,11 +1027,11 @@ const XMTPWebmailClient: React.FC = () => {
               isWasmInitialized={isWasmInitialized}
               wasmInitStalled={wasmInitStalled}
               wasmError={wasmError}
-              isLoading={isLoading}
+              isLoading={xmtpLoading}
               xmtpInitStalled={xmtpInitStalled}
-              clientError={clientError}
+              clientError={xmtpError ?? undefined}
               clientAddress={clientAddress}
-              conversationsCount={xmtpConversations.length}
+              conversationsCount={conversationList.length}
             />
           </div>
         </div>
@@ -804,11 +1058,11 @@ const XMTPWebmailClient: React.FC = () => {
             isWasmInitialized={isWasmInitialized}
             wasmInitStalled={wasmInitStalled}
             wasmError={wasmError}
-            isLoading={isLoading}
+            isLoading={xmtpLoading}
             xmtpInitStalled={xmtpInitStalled}
-            clientError={clientError}
+            clientError={xmtpError ?? undefined}
             clientAddress={clientAddress}
-            conversationsCount={xmtpConversations.length}
+            conversationsCount={conversationList.length}
           />
         </div>
       </div>
@@ -822,7 +1076,7 @@ const XMTPWebmailClient: React.FC = () => {
         <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
           <h1 className="text-2xl font-bold">xmtp.mx</h1>
           <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} />
-          {error && <p className="text-sm text-red-600">{error.message}</p>}
+          {xmtpError && <p className="text-sm text-red-600">{xmtpError}</p>}
           <StartupStatusPanel
             xmtpEnv={xmtpEnv}
             thirdwebClient={Boolean(thirdwebClient)}
@@ -833,33 +1087,33 @@ const XMTPWebmailClient: React.FC = () => {
             isWasmInitialized={isWasmInitialized}
             wasmInitStalled={wasmInitStalled}
             wasmError={wasmError}
-            isLoading={isLoading}
+            isLoading={xmtpLoading}
             xmtpInitStalled={xmtpInitStalled}
-            clientError={clientError}
+            clientError={xmtpError ?? undefined}
             clientAddress={clientAddress}
-            conversationsCount={xmtpConversations.length}
+            conversationsCount={conversationList.length}
           />
         </div>
       </div>
     );
   }
 
-  if (!client) {
+  if (!xmtpClient) {
     return (
       <div className="min-h-dvh bg-[#f6f8fc] text-neutral-900">
         <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
         <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
           <h1 className="text-2xl font-bold">xmtp.mx</h1>
           <p className="text-sm text-neutral-600">
-            {!activeWallet ? 'Waiting for wallet provider…' : isLoading ? 'Initializing XMTP…' : error ? 'XMTP failed.' : 'Initializing XMTP…'}
+            {!activeWallet ? 'Waiting for wallet provider…' : xmtpLoading ? 'Initializing XMTP…' : xmtpError ? 'XMTP failed.' : 'Initializing XMTP…'}
           </p>
-          {error ? <p className="max-w-md text-sm text-red-600">{error.message}</p> : null}
-          {error ? (
+          {xmtpError ? <p className="max-w-md text-sm text-red-600">{xmtpError}</p> : null}
+          {xmtpError ? (
             <button
               type="button"
               className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
               onClick={() => void initializeXmtpClient()}
-              disabled={!activeWallet || !isWasmInitialized || isLoading}
+              disabled={!activeWallet || !isWasmInitialized || xmtpLoading}
             >
               Try again
             </button>
@@ -874,20 +1128,16 @@ const XMTPWebmailClient: React.FC = () => {
             isWasmInitialized={isWasmInitialized}
             wasmInitStalled={wasmInitStalled}
             wasmError={wasmError}
-            isLoading={isLoading}
+            isLoading={xmtpLoading}
             xmtpInitStalled={xmtpInitStalled}
-            clientError={clientError}
+            clientError={xmtpError ?? undefined}
             clientAddress={clientAddress}
-            conversationsCount={xmtpConversations.length}
+            conversationsCount={conversationList.length}
           />
         </div>
       </div>
     );
   }
-
-  const filteredConversations = xmtpConversations.filter((c) =>
-    c.peerAddress.toLowerCase().includes(search.trim().toLowerCase()),
-  );
 
   return (
     <div className="h-dvh bg-[#f6f8fc] text-neutral-900">
@@ -957,17 +1207,40 @@ const XMTPWebmailClient: React.FC = () => {
                 </div>
               </div>
               <div className="h-full overflow-y-auto">
-                {filteredConversations.length === 0 ? (
+                {conversationList.length === 0 ? (
                   <div className="px-4 py-6 text-sm text-neutral-500">No conversations.</div>
                 ) : (
-                  filteredConversations.map((conversation) => (
-                    <ConversationRow
-                      key={conversation.topic}
-                      conversation={conversation}
-                      isSelected={selectedConversation?.topic === conversation.topic}
-                      onSelect={(c) => setSelectedConversation(c)}
-                    />
-                  ))
+                  conversationList.map((summary) => {
+                    const lastMessage = summary.lastMessage;
+                    const lastMessageDate = lastMessage ? nsToDate(lastMessage.sentAtNs) : undefined;
+                    const label = summary.peerAddress ?? summary.peerInboxId ?? summary.conversation.id;
+
+                    return (
+                      <button
+                        key={summary.conversation.id}
+                        type="button"
+                        className={[
+                          'w-full border-b px-4 py-3 text-left hover:bg-neutral-50',
+                          selectedConversationId === summary.conversation.id ? 'bg-neutral-50' : '',
+                        ].join(' ')}
+                        onClick={() => {
+                          setSelectedConversationId(summary.conversation.id);
+                          void loadMessagesForConversation(summary.conversation);
+                        }}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="truncate text-sm font-semibold text-neutral-900">{label}</div>
+                          <div className="shrink-0 text-xs text-neutral-500">{formatTimestamp(lastMessageDate)}</div>
+                        </div>
+                        <div className="mt-1 truncate text-xs text-neutral-500">
+                          {lastMessage ? decodeXmtpEmail(lastMessage.content).kind === 'email'
+                            ? decodeXmtpEmail(lastMessage.content).email.subject || '(no subject)'
+                            : decodeXmtpEmail(lastMessage.content).text
+                            : 'No messages yet.'}
+                        </div>
+                      </button>
+                    );
+                  })
                 )}
               </div>
             </section>
@@ -976,7 +1249,9 @@ const XMTPWebmailClient: React.FC = () => {
               {selectedConversation ? (
                 <Thread
                   conversation={selectedConversation}
-                  selfAddress={client.address}
+                  messages={selectedMessages}
+                  selfInboxId={xmtpClient.inboxId}
+                  inboxDetails={inboxDetails}
                   onReply={(options) => handleSendReply(options)}
                 />
               ) : (
