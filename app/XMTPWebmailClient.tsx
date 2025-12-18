@@ -60,6 +60,13 @@ type DemoMessage = {
   subject?: string;
 };
 
+type DemoModalRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 type DemoConversation = {
   id: string;
   peerAddress: string;
@@ -566,6 +573,17 @@ const XMTPWebmailClient: React.FC = () => {
   const [demoMode, setDemoMode] = useState(false);
   const [demoSelectedId, setDemoSelectedId] = useState<string | null>(null);
   const [demoView, setDemoView] = useState<'inbox' | 'sent' | 'contacts'>('inbox');
+  const demoMailListRef = useRef<HTMLDivElement | null>(null);
+  const [demoMailListSize, setDemoMailListSize] = useState({ width: 0, height: 0 });
+  const demoMailListSizeRef = useRef({ width: 0, height: 0 });
+  const [demoModalRect, setDemoModalRect] = useState<DemoModalRect>({ x: 12, y: 12, width: 0, height: 0 });
+  const demoModalRectRef = useRef<DemoModalRect>(demoModalRect);
+  const demoModalPointerRef = useRef<{
+    mode: 'drag' | 'resize';
+    startX: number;
+    startY: number;
+    origin: DemoModalRect;
+  } | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -575,6 +593,122 @@ const XMTPWebmailClient: React.FC = () => {
       }
     }
   }, []);
+
+  const clampDemoModalRect = useCallback(
+    (rect: DemoModalRect, size: { width: number; height: number }, options?: { resetIfZero?: boolean }) => {
+      const margin = 12;
+      const minWidth = Math.floor(size.width * 0.67);
+      const maxWidth = Math.max(minWidth, size.width - margin * 2);
+      const minHeight = Math.min(size.height - margin * 2, Math.max(260, Math.floor(size.height * 0.6)));
+      const maxHeight = Math.max(minHeight, size.height - margin * 2);
+
+      let width = rect.width;
+      let height = rect.height;
+      let x = rect.x;
+      let y = rect.y;
+
+      if (options?.resetIfZero && (!width || !height)) {
+        width = Math.max(minWidth, Math.floor(size.width * 0.8));
+        height = Math.max(minHeight, Math.floor(size.height * 0.85));
+        x = margin;
+        y = margin;
+      }
+
+      width = Math.min(Math.max(width, minWidth), maxWidth);
+      height = Math.min(Math.max(height, minHeight), maxHeight);
+      x = Math.min(Math.max(x, margin), Math.max(margin, size.width - margin - width));
+      y = Math.min(Math.max(y, margin), Math.max(margin, size.height - margin - height));
+
+      return { x, y, width, height };
+    },
+    [],
+  );
+
+  useEffect(() => {
+    demoModalRectRef.current = demoModalRect;
+  }, [demoModalRect]);
+
+  useEffect(() => {
+    const node = demoMailListRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const width = Math.max(0, Math.floor(entry.contentRect.width));
+      const height = Math.max(0, Math.floor(entry.contentRect.height));
+      const size = { width, height };
+      demoMailListSizeRef.current = size;
+      setDemoMailListSize(size);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!demoMailListSize.width || !demoMailListSize.height) return;
+    setDemoModalRect((prev) => clampDemoModalRect(prev, demoMailListSize, { resetIfZero: true }));
+  }, [clampDemoModalRect, demoMailListSize]);
+
+  const handleDemoPointerMove = useCallback(
+    (event: MouseEvent) => {
+      const state = demoModalPointerRef.current;
+      if (!state) return;
+      const size = demoMailListSizeRef.current;
+      if (!size.width || !size.height) return;
+      const dx = event.clientX - state.startX;
+      const dy = event.clientY - state.startY;
+
+      const next =
+        state.mode === 'drag'
+          ? { ...state.origin, x: state.origin.x + dx, y: state.origin.y + dy }
+          : { ...state.origin, width: state.origin.width + dx, height: state.origin.height + dy };
+
+      setDemoModalRect(clampDemoModalRect(next, size));
+    },
+    [clampDemoModalRect],
+  );
+
+  const handleDemoPointerUp = useCallback(() => {
+    demoModalPointerRef.current = null;
+    window.removeEventListener('mousemove', handleDemoPointerMove);
+    window.removeEventListener('mouseup', handleDemoPointerUp);
+  }, [handleDemoPointerMove]);
+
+  const startDemoDrag = useCallback(
+    (event: React.MouseEvent) => {
+      if (event.button !== 0) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-modal-action="true"]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      demoModalPointerRef.current = {
+        mode: 'drag',
+        startX: event.clientX,
+        startY: event.clientY,
+        origin: demoModalRectRef.current,
+      };
+      window.addEventListener('mousemove', handleDemoPointerMove);
+      window.addEventListener('mouseup', handleDemoPointerUp);
+    },
+    [handleDemoPointerMove, handleDemoPointerUp],
+  );
+
+  const startDemoResize = useCallback(
+    (event: React.MouseEvent) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      demoModalPointerRef.current = {
+        mode: 'resize',
+        startX: event.clientX,
+        startY: event.clientY,
+        origin: demoModalRectRef.current,
+      };
+      window.addEventListener('mousemove', handleDemoPointerMove);
+      window.addEventListener('mouseup', handleDemoPointerUp);
+    },
+    [handleDemoPointerMove, handleDemoPointerUp],
+  );
 
   // Close modal on Escape key
   useEffect(() => {
@@ -1315,7 +1449,11 @@ const XMTPWebmailClient: React.FC = () => {
             </aside>
 
             {/* Mail List */}
-            <div className="relative flex min-w-0 flex-1 overflow-hidden card-shiny animate-fade-in delay-2" style={{ borderRadius: '12px' }}>
+            <div
+              className="relative flex min-w-0 flex-1 overflow-hidden card-shiny animate-fade-in delay-2"
+              style={{ borderRadius: '12px' }}
+              ref={demoMailListRef}
+            >
               {demoView === 'contacts' ? (
                 /* Contacts View */
                 <div className="flex-1 overflow-y-auto p-4">
@@ -1472,8 +1610,14 @@ const XMTPWebmailClient: React.FC = () => {
                     onClick={() => setDemoSelectedId(null)}
                   />
                   <div
-                    className="absolute inset-2 modal-glass flex flex-col overflow-hidden animate-scale-in"
-                    style={{ borderRadius: 'var(--radius-2xl)' }}
+                    className="absolute modal-glass flex flex-col overflow-hidden animate-scale-in relative"
+                    style={{
+                      borderRadius: 'var(--radius-2xl)',
+                      left: demoModalRect.x,
+                      top: demoModalRect.y,
+                      width: demoModalRect.width,
+                      height: demoModalRect.height,
+                    }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     {selectedDemo && 'kind' in selectedDemo && selectedDemo.kind === 'welcome' ? (
@@ -1481,7 +1625,11 @@ const XMTPWebmailClient: React.FC = () => {
                     ) : selectedDemo && !('kind' in selectedDemo) ? (
                       <>
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between px-4 py-3 glass-strong shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+                        <div
+                          className="flex items-center justify-between px-4 py-3 glass-strong shrink-0"
+                          style={{ borderBottom: '1px solid var(--border)', cursor: 'move', userSelect: 'none' }}
+                          onMouseDown={startDemoDrag}
+                        >
                           <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
                               {(selectedDemo.peerName || selectedDemo.peerAddress).slice(0, 2).toUpperCase()}
@@ -1501,6 +1649,7 @@ const XMTPWebmailClient: React.FC = () => {
                             </div>
                           </div>
                           <button
+                            data-modal-action="true"
                             type="button"
                             className="btn-nav"
                             style={{ padding: '6px' }}
@@ -1565,6 +1714,12 @@ const XMTPWebmailClient: React.FC = () => {
                         </div>
                       </>
                     ) : null}
+                    <div
+                      data-modal-action="true"
+                      className="absolute bottom-2 right-2 h-4 w-4 cursor-nwse-resize rounded-sm"
+                      style={{ border: '1px solid var(--border)', background: 'var(--surface-glass)' }}
+                      onMouseDown={startDemoResize}
+                    />
                   </div>
                 </div>
               )}
@@ -1578,14 +1733,25 @@ const XMTPWebmailClient: React.FC = () => {
                     onClick={() => setComposeOpen(false)}
                   />
                   <div
-                    className="absolute inset-2 modal-glass flex flex-col overflow-hidden animate-scale-in"
-                    style={{ borderRadius: '16px' }}
+                    className="absolute modal-glass flex flex-col overflow-hidden animate-scale-in relative"
+                    style={{
+                      borderRadius: '16px',
+                      left: demoModalRect.x,
+                      top: demoModalRect.y,
+                      width: demoModalRect.width,
+                      height: demoModalRect.height,
+                    }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Modal Header */}
-                    <div className="flex items-center justify-between px-4 py-3 glass-strong shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+                    <div
+                      className="flex items-center justify-between px-4 py-3 glass-strong shrink-0"
+                      style={{ borderBottom: '1px solid var(--border)', cursor: 'move', userSelect: 'none' }}
+                      onMouseDown={startDemoDrag}
+                    >
                       <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>New Message</div>
                       <button
+                        data-modal-action="true"
                         type="button"
                         className="btn-nav"
                         style={{ padding: '6px' }}
@@ -1629,6 +1795,7 @@ const XMTPWebmailClient: React.FC = () => {
                     {/* Modal Footer */}
                     <div className="px-4 py-3 glass-strong shrink-0 flex items-center justify-end gap-2" style={{ borderTop: '1px solid var(--border)' }}>
                       <button
+                        data-modal-action="true"
                         type="button"
                         className="btn-nav"
                         style={{ padding: '8px 16px', fontSize: '13px' }}
@@ -1637,6 +1804,7 @@ const XMTPWebmailClient: React.FC = () => {
                         Cancel
                       </button>
                       <button
+                        data-modal-action="true"
                         type="button"
                         className="btn-primary flex items-center gap-1.5"
                         style={{ height: '34px', padding: '0 16px', fontSize: '13px', borderRadius: '8px' }}
@@ -1651,6 +1819,12 @@ const XMTPWebmailClient: React.FC = () => {
                         Send
                       </button>
                     </div>
+                    <div
+                      data-modal-action="true"
+                      className="absolute bottom-2 right-2 h-4 w-4 cursor-nwse-resize rounded-sm"
+                      style={{ border: '1px solid var(--border)', background: 'var(--surface-glass)' }}
+                      onMouseDown={startDemoResize}
+                    />
                   </div>
                 </div>
               )}
