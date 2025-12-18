@@ -576,6 +576,16 @@ const XMTPWebmailClient: React.FC = () => {
     }
   }, []);
 
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && demoSelectedId) {
+        setDemoSelectedId(null);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [demoSelectedId]);
 
 
   const debug = useCallback(
