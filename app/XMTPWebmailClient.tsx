@@ -1246,20 +1246,18 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Inbox */}
                   <button
                     onClick={() => setDemoView('inbox')}
-                    className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition"
+                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition"
                     style={{
                       color: demoView === 'inbox' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'inbox' ? 'var(--primary-subtle)' : 'transparent'
                     }}
                   >
-                    <span className="flex items-center gap-2">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z" />
-                        <path d="M22 6l-10 7L2 6" />
-                      </svg>
-                      Inbox
-                    </span>
-                    <span className="text-xs">{DEMO_CONVERSATIONS.length + 1}</span>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z" />
+                      <path d="M22 6l-10 7L2 6" />
+                    </svg>
+                    Inbox
+                    <span className="ml-auto text-xs opacity-60">{DEMO_CONVERSATIONS.length + 1}</span>
                   </button>
                   {/* Sent */}
                   <button
