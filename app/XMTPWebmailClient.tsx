@@ -50,6 +50,58 @@ const WELCOME_MESSAGE: Omit<WelcomeConversationSummary, 'kind' | 'id'> = {
 
 const ETHEREUM_IDENTIFIER_KIND: IdentifierKind = 'Ethereum';
 
+// ===== DEMO MODE MOCK DATA =====
+type DemoMessage = {
+  id: string;
+  senderInboxId: string;
+  content: string;
+  sentAt: Date;
+  isEmail: boolean;
+  subject?: string;
+};
+
+type DemoConversation = {
+  id: string;
+  peerAddress: string;
+  peerName?: string;
+  messages: DemoMessage[];
+  lastMessageAt: Date;
+};
+
+const DEMO_CONVERSATIONS: DemoConversation[] = [
+  {
+    id: 'demo-1',
+    peerAddress: '0x1234...abcd',
+    peerName: 'vitalik.eth',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 30),
+    messages: [
+      { id: 'msg-1-1', senderInboxId: 'peer', content: 'Hey! Just saw your project. The XMTP integration looks great!', sentAt: new Date(Date.now() - 1000 * 60 * 60 * 2), isEmail: false },
+      { id: 'msg-1-2', senderInboxId: 'self', content: 'Thanks! We are trying to make encrypted messaging feel like email.', sentAt: new Date(Date.now() - 1000 * 60 * 60), isEmail: false },
+      { id: 'msg-1-3', senderInboxId: 'peer', content: 'Love the Gmail-inspired design. The dark mode is slick!', sentAt: new Date(Date.now() - 1000 * 60 * 30), isEmail: false },
+    ],
+  },
+  {
+    id: 'demo-2',
+    peerAddress: '0x5678...efgh',
+    peerName: 'deanpierce.eth',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 60 * 3),
+    messages: [
+      { id: 'msg-2-1', senderInboxId: 'peer', sentAt: new Date(Date.now() - 1000 * 60 * 60 * 5), isEmail: true, subject: 'Re: XMTP Bridge Progress', content: 'The SMTP bridge is coming along nicely.\n\nLet me know if you have any questions!' },
+      { id: 'msg-2-2', senderInboxId: 'self', sentAt: new Date(Date.now() - 1000 * 60 * 60 * 3), isEmail: true, subject: 'Re: XMTP Bridge Progress', content: 'That is awesome! The email-style threading is working well.' },
+    ],
+  },
+  {
+    id: 'demo-3',
+    peerAddress: '0x9abc...ijkl',
+    peerName: 'alice.eth',
+    lastMessageAt: new Date(Date.now() - 1000 * 60 * 60 * 24),
+    messages: [
+      { id: 'msg-3-1', senderInboxId: 'self', sentAt: new Date(Date.now() - 1000 * 60 * 60 * 25), isEmail: false, content: 'Hey Alice, have you tried the new theme toggle?' },
+      { id: 'msg-3-2', senderInboxId: 'peer', sentAt: new Date(Date.now() - 1000 * 60 * 60 * 24), isEmail: false, content: 'Yes! The dark mode is beautiful. The glassmorphism effects are really nice too.' },
+    ],
+  },
+];
+
 function toneDotClass(tone: StartupStatusTone) {
   switch (tone) {
     case 'ok':
@@ -509,6 +561,20 @@ const XMTPWebmailClient: React.FC = () => {
       return false;
     }
   }, []);
+
+  // Demo mode: bypass auth and show full UI with mock data - enable with ?demo in URL
+  const [demoMode, setDemoMode] = useState(false);
+  const [demoSelectedId, setDemoSelectedId] = useState<string | null>('welcome-thread');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('demo')) {
+        setDemoMode(true);
+      }
+    }
+  }, []);
+
 
   const debug = useCallback(
     (...args: unknown[]) => {
@@ -1091,6 +1157,193 @@ const XMTPWebmailClient: React.FC = () => {
       setComposeIsSending(false);
     }
   };
+
+  // ===== DEMO MODE RENDER =====
+  if (demoMode) {
+    const welcomeConvo: WelcomeConversationSummary = { kind: 'welcome', id: WELCOME_CONVERSATION_ID, ...WELCOME_MESSAGE };
+    const selectedDemo = demoSelectedId === WELCOME_CONVERSATION_ID
+      ? welcomeConvo
+      : DEMO_CONVERSATIONS.find(c => c.id === demoSelectedId);
+
+    return (
+      <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]" style={{ background: 'var(--gradient-page)' }}>
+        <div className="mx-auto flex h-full max-w-6xl flex-col gap-4 px-4 pb-6 pt-4 lg:px-8">
+          <header className="flex flex-col gap-3 rounded-3xl px-5 py-4 shadow-xl sm:flex-row sm:items-center sm:justify-between backdrop-blur-md" style={{ background: 'var(--header-bg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-subtle)' }}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white shadow-md" style={{ background: 'var(--gradient-accent)' }}>
+                XM
+              </div>
+              <div>
+                <div className="text-lg font-semibold tracking-tight" style={{ color: 'var(--foreground)' }}>xmtp.mx Mail</div>
+                <div className="text-xs" style={{ color: 'var(--foreground-muted)' }}>Demo Mode - Theme Preview</div>
+              </div>
+            </div>
+            <div className="flex w-full flex-1 items-center gap-3 sm:w-auto">
+              <div className="hidden flex-1 sm:block">
+                <input
+                  className="w-full rounded-full px-4 py-2 text-sm outline-none transition"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--foreground)', boxShadow: 'var(--shadow-inner)' }}
+                  placeholder="Search conversations"
+                  value={search}
+                  onChange={(e) => setSearch(e.currentTarget.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2 rounded-full px-3 py-1 text-[12px] font-semibold" style={{ background: 'var(--welcome-bg)', color: 'var(--welcome-fg)', border: '1px solid var(--welcome-border)' }}>
+                DEMO
+              </div>
+              <ThemeToggle />
+            </div>
+          </header>
+
+          <div className="flex flex-1 gap-4 overflow-hidden">
+            <aside className="hidden w-[260px] shrink-0 flex-col gap-3 sm:flex">
+              <div className="rounded-3xl p-4 backdrop-blur-md" style={{ background: 'var(--sidebar-bg)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-subtle)' }}>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
+                  style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-lg)' }}
+                  onClick={() => setComposeOpen(true)}
+                >
+                  <span className="text-base">✉️</span> Compose
+                </button>
+                <div className="mt-4 space-y-1 text-sm font-semibold">
+                  <div className="flex items-center justify-between rounded-2xl px-3 py-2 transition cursor-pointer" style={{ color: 'var(--foreground)', background: 'var(--primary-subtle)' }}>
+                    <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: 'var(--primary)' }} /> Inbox</span>
+                    <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: 'var(--primary-subtle)', color: 'var(--primary)' }}>{DEMO_CONVERSATIONS.length + 1}</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-2xl px-3 py-2 transition cursor-pointer" style={{ color: 'var(--foreground-muted)' }}>
+                    <span className="h-2 w-2 rounded-full" style={{ background: 'var(--foreground-subtle)' }} /> Sent
+                  </div>
+                  <div className="flex items-center gap-2 rounded-2xl px-3 py-2 transition cursor-pointer" style={{ color: 'var(--foreground-muted)' }}>
+                    <span className="h-2 w-2 rounded-full" style={{ background: 'var(--foreground-subtle)' }} /> Drafts
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-3xl p-4 text-xs backdrop-blur-md" style={{ background: 'var(--card-bg)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-subtle)', color: 'var(--foreground-muted)' }}>
+                <div className="font-semibold" style={{ color: 'var(--foreground)' }}>Demo Mode Active</div>
+                <p className="mt-1 leading-relaxed">This is a preview with mock data. Toggle the theme using the button in the header to see light/dark modes.</p>
+              </div>
+            </aside>
+
+            <div className="flex min-w-0 flex-1 flex-col gap-3 rounded-3xl p-3" style={{ background: 'var(--surface-glass)', boxShadow: 'var(--shadow-inner)', border: '1px solid var(--border-subtle)' }}>
+              <div className="flex flex-1 gap-3 overflow-hidden">
+                <section className="w-full max-w-md shrink-0 overflow-hidden rounded-2xl backdrop-blur-md" style={{ background: 'var(--card-bg)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-subtle)' }}>
+                  <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
+                    <div className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Inbox</div>
+                    <div className="text-[11px]" style={{ color: 'var(--foreground-muted)' }}>Demo conversations</div>
+                  </div>
+                  <div className="h-full overflow-y-auto">
+                    {/* Welcome message */}
+                    <button
+                      type="button"
+                      className="w-full px-4 py-3 text-left transition hover:scale-[1.005]"
+                      style={{ borderBottom: '1px solid var(--border)', background: demoSelectedId === WELCOME_CONVERSATION_ID ? 'var(--welcome-bg)' : 'transparent' }}
+                      onClick={() => setDemoSelectedId(WELCOME_CONVERSATION_ID)}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 truncate">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold" style={{ background: 'var(--welcome-bg)', color: 'var(--welcome-fg)', border: '1px solid var(--welcome-border)' }}>Hi</span>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Welcome to xmtp.mx</div>
+                            <div className="mt-0.5 text-[11px]" style={{ color: 'var(--welcome-fg)' }}>Product tour</div>
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-xs" style={{ color: 'var(--foreground-muted)' }}>Now</div>
+                      </div>
+                    </button>
+                    {/* Demo conversations */}
+                    {DEMO_CONVERSATIONS.map((convo) => (
+                      <button
+                        key={convo.id}
+                        type="button"
+                        className="w-full px-4 py-3 text-left transition hover:scale-[1.005]"
+                        style={{ borderBottom: '1px solid var(--border)', background: demoSelectedId === convo.id ? 'var(--primary-subtle)' : 'transparent' }}
+                        onClick={() => setDemoSelectedId(convo.id)}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 truncate">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border-subtle)' }}>
+                              {(convo.peerName || convo.peerAddress).slice(0, 2).toUpperCase()}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{convo.peerName || convo.peerAddress}</div>
+                              <div className="mt-0.5 truncate text-[11px]" style={{ color: 'var(--foreground-muted)' }}>
+                                {convo.messages[convo.messages.length - 1]?.content.slice(0, 50)}...
+                              </div>
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-xs" style={{ color: 'var(--foreground-muted)' }}>{formatTimestamp(convo.lastMessageAt)}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="min-w-0 flex-1 overflow-hidden">
+                  {selectedDemo && 'kind' in selectedDemo && selectedDemo.kind === 'welcome' ? (
+                    <WelcomeThread conversation={selectedDemo} />
+                  ) : selectedDemo && !('kind' in selectedDemo) ? (
+                    <div className="flex h-full flex-col overflow-hidden rounded-3xl backdrop-blur-md" style={{ background: 'var(--card-bg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-subtle)' }}>
+                      <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+                        <div className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>{selectedDemo.peerName || selectedDemo.peerAddress}</div>
+                        <div className="text-xs" style={{ color: 'var(--foreground-muted)' }}>Encrypted on XMTP (Demo)</div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto px-6 py-5">
+                        <div className="space-y-3">
+                          {selectedDemo.messages.map((msg) => {
+                            const isSelf = msg.senderInboxId === 'self';
+                            return (
+                              <div key={msg.id} className={['flex', isSelf ? 'justify-end' : 'justify-start'].join(' ')}>
+                                <div
+                                  className="max-w-[720px] rounded-2xl px-4 py-3 backdrop-blur"
+                                  style={{ background: isSelf ? 'var(--primary-subtle)' : 'var(--surface)', border: isSelf ? '1px solid var(--primary)' : '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
+                                >
+                                  <div className="mb-2 flex items-center justify-between gap-4 text-xs" style={{ color: 'var(--foreground-muted)' }}>
+                                    <div>{isSelf ? 'You' : (selectedDemo.peerName || 'Peer')}</div>
+                                    <div>{formatTimestamp(msg.sentAt)}</div>
+                                  </div>
+                                  {msg.isEmail && msg.subject && (
+                                    <div className="mb-2 text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{msg.subject}</div>
+                                  )}
+                                  <div className="whitespace-pre-wrap text-sm" style={{ color: 'var(--foreground)' }}>{msg.content}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="px-6 py-4" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+                        <div className="flex gap-2">
+                          <textarea
+                            className="min-h-[44px] flex-1 resize-none rounded-2xl px-3 py-2 text-sm outline-none transition"
+                            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--foreground)', boxShadow: 'var(--shadow-inner)' }}
+                            placeholder="Reply... (demo mode)"
+                            disabled
+                          />
+                          <button
+                            type="button"
+                            className="h-[44px] shrink-0 rounded-2xl px-4 text-sm font-semibold text-white shadow-sm transition disabled:opacity-50"
+                            style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-md)' }}
+                            disabled
+                          >
+                            Send
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex h-full items-center justify-center rounded-2xl text-sm backdrop-blur-md" style={{ background: 'var(--card-bg)', color: 'var(--foreground-muted)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-subtle)' }}>
+                      Select a conversation to view
+                    </div>
+                  )}
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (wasmError) {
     return (
