@@ -565,6 +565,7 @@ const XMTPWebmailClient: React.FC = () => {
   // Demo mode: bypass auth and show full UI with mock data - enable with ?demo in URL
   const [demoMode, setDemoMode] = useState(false);
   const [demoSelectedId, setDemoSelectedId] = useState<string | null>('welcome-thread');
+  const [demoView, setDemoView] = useState<'inbox' | 'sent' | 'contacts'>('inbox');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -574,6 +575,7 @@ const XMTPWebmailClient: React.FC = () => {
       }
     }
   }, []);
+
 
 
   const debug = useCallback(
@@ -1226,166 +1228,242 @@ const XMTPWebmailClient: React.FC = () => {
           {/* Main Content */}
           <div className="flex flex-1 gap-4 overflow-hidden">
             {/* Sidebar */}
-            <aside className="flex w-[200px] shrink-0 flex-col gap-3">
-              <div className="card-shiny p-4 backdrop-blur-md" style={{ background: 'var(--sidebar-bg)', borderRadius: 'var(--radius-2xl)' }}>
+            <aside className="flex w-[180px] shrink-0 flex-col gap-3">
+              <div className="card-shiny p-3 backdrop-blur-md" style={{ background: 'var(--sidebar-bg)', borderRadius: 'var(--radius-xl)' }}>
                 <button
                   type="button"
-                  className="btn-primary flex w-full items-center justify-center gap-2"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-white transition hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-sm)' }}
                   onClick={() => setComposeOpen(true)}
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path d="M12 4v16m8-8H4" />
                   </svg>
                   Compose
                 </button>
-                <nav className="mt-5 space-y-1">
-                  <button className="row-highlight flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold" style={{ color: 'var(--foreground)', background: 'var(--primary-subtle)' }}>
-                    <span className="flex items-center gap-2.5">
-                      <svg className="h-4 w-4" style={{ color: 'var(--primary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <nav className="mt-3 space-y-0.5">
+                  <button
+                    onClick={() => setDemoView('inbox')}
+                    className="row-highlight flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition"
+                    style={{
+                      color: demoView === 'inbox' ? 'var(--foreground)' : 'var(--foreground-muted)',
+                      background: demoView === 'inbox' ? 'var(--primary-subtle)' : 'transparent'
+                    }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="h-4 w-4" style={{ color: demoView === 'inbox' ? 'var(--primary)' : 'inherit' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z" />
                         <path d="M22 6l-10 7L2 6" />
                       </svg>
                       Inbox
                     </span>
-                    <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>{DEMO_CONVERSATIONS.length + 1}</span>
+                    {demoView === 'inbox' && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>{DEMO_CONVERSATIONS.length + 1}</span>}
                   </button>
-                  <button className="row-highlight flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm" style={{ color: 'var(--foreground-muted)' }}>
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <button
+                    onClick={() => setDemoView('contacts')}
+                    className="row-highlight flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition"
+                    style={{
+                      color: demoView === 'contacts' ? 'var(--foreground)' : 'var(--foreground-muted)',
+                      background: demoView === 'contacts' ? 'var(--primary-subtle)' : 'transparent'
+                    }}
+                  >
+                    <svg className="h-4 w-4" style={{ color: demoView === 'contacts' ? 'var(--primary)' : 'inherit' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     Contacts
                   </button>
-                  <button className="row-highlight flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm" style={{ color: 'var(--foreground-muted)' }}>
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <button
+                    onClick={() => setDemoView('sent')}
+                    className="row-highlight flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition"
+                    style={{
+                      color: demoView === 'sent' ? 'var(--foreground)' : 'var(--foreground-muted)',
+                      background: demoView === 'sent' ? 'var(--primary-subtle)' : 'transparent'
+                    }}
+                  >
+                    <svg className="h-4 w-4" style={{ color: demoView === 'sent' ? 'var(--primary)' : 'inherit' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                     Sent
                   </button>
                 </nav>
               </div>
-              <div className="card-shiny p-4 text-xs backdrop-blur-md" style={{ background: 'var(--card-bg)', borderRadius: 'var(--radius-xl)', color: 'var(--foreground-muted)' }}>
+              <div className="card-shiny p-3 text-xs backdrop-blur-md" style={{ background: 'var(--card-bg)', borderRadius: 'var(--radius-lg)', color: 'var(--foreground-muted)' }}>
                 <div className="font-semibold" style={{ color: 'var(--foreground)' }}>🎨 Theme Preview</div>
-                <p className="mt-1 leading-relaxed">Click the sun/moon icon to toggle dark mode!</p>
+                <p className="mt-1 leading-relaxed">Click the sun/moon to toggle theme!</p>
               </div>
             </aside>
 
-            {/* Mail List and Thread */}
+            {/* Mail List and Thread / Contacts / Sent */}
             <div className="card-shiny flex min-w-0 flex-1 overflow-hidden" style={{ background: 'var(--surface-glass)', borderRadius: 'var(--radius-2xl)' }}>
-              {/* Mail List */}
-              <section className="w-full max-w-sm shrink-0 overflow-hidden border-r" style={{ borderColor: 'var(--border)' }}>
-                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-                  <div>
-                    <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>Inbox</div>
-                    <div className="text-[10px]" style={{ color: 'var(--foreground-muted)' }}>{DEMO_CONVERSATIONS.length + 1} messages</div>
+              {demoView === 'contacts' ? (
+                /* Contacts View */
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="mb-4">
+                    <h2 className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>Contacts</h2>
+                    <p className="text-sm" style={{ color: 'var(--foreground-muted)' }}>People you&apos;ve messaged</p>
                   </div>
-                  <button className="rounded-lg p-2 transition hover:bg-[var(--surface-hover)]" style={{ color: 'var(--foreground-muted)' }}>
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="h-full overflow-y-auto">
-                  {/* Gmail-style rows: From | Subject | Time */}
-                  <div
-                    className={`inbox-row ${demoSelectedId === WELCOME_CONVERSATION_ID ? 'selected' : ''}`}
-                    onClick={() => setDemoSelectedId(WELCOME_CONVERSATION_ID)}
-                    style={{ background: demoSelectedId === WELCOME_CONVERSATION_ID ? 'var(--welcome-bg)' : undefined }}
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold" style={{ background: 'var(--welcome-bg)', color: 'var(--welcome-fg)', border: '1px solid var(--welcome-border)' }}>Hi</div>
-                    <div className="truncate font-semibold text-sm" style={{ color: 'var(--foreground)' }}>XMTP Team</div>
-                    <div className="truncate text-sm" style={{ color: 'var(--foreground-muted)' }}>Welcome to xmtp.mx</div>
-                    <div className="text-xs whitespace-nowrap" style={{ color: 'var(--foreground-subtle)' }}>Now</div>
-                  </div>
-                  {DEMO_CONVERSATIONS.map((convo) => {
-                    const lastMsg = convo.messages[convo.messages.length - 1];
-                    const subject = lastMsg?.isEmail && lastMsg.subject ? lastMsg.subject : lastMsg?.content.slice(0, 40) + '...';
-                    return (
-                      <div
-                        key={convo.id}
-                        className={`inbox-row ${demoSelectedId === convo.id ? 'selected' : ''}`}
-                        onClick={() => setDemoSelectedId(convo.id)}
-                      >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border-subtle)' }}>
-                          {(convo.peerName || convo.peerAddress).slice(0, 2).toUpperCase()}
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {DEMO_CONVERSATIONS.map((c) => (
+                      <div key={c.id} className="card-shiny flex items-center gap-3 p-3 cursor-pointer transition hover:scale-[1.01]" style={{ borderRadius: 'var(--radius-lg)' }} onClick={() => { setDemoView('inbox'); setDemoSelectedId(c.id); }}>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--foreground-muted)' }}>
+                          {(c.peerName || c.peerAddress).slice(0, 2).toUpperCase()}
                         </div>
-                        <div className="truncate font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{convo.peerName || convo.peerAddress}</div>
-                        <div className="truncate text-sm" style={{ color: 'var(--foreground-muted)' }}>{subject}</div>
-                        <div className="text-xs whitespace-nowrap" style={{ color: 'var(--foreground-subtle)' }}>{formatTimestamp(convo.lastMessageAt)}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {/* Thread View */}
-              <section className="flex-1 overflow-hidden" style={{ background: 'var(--card-bg)' }}>
-                {selectedDemo && 'kind' in selectedDemo && selectedDemo.kind === 'welcome' ? (
-                  <WelcomeThread conversation={selectedDemo} />
-                ) : selectedDemo && !('kind' in selectedDemo) ? (
-                  <div className="flex h-full flex-col">
-                    <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'var(--surface)', border: '2px solid var(--border)', color: 'var(--foreground-muted)' }}>
-                          {(selectedDemo.peerName || selectedDemo.peerAddress).slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>{selectedDemo.peerName || selectedDemo.peerAddress}</div>
-                          <div className="text-xs" style={{ color: 'var(--foreground-muted)' }}>Encrypted on XMTP • {selectedDemo.messages.length} messages</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{c.peerName || 'Unknown'}</div>
+                          <div className="truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>{c.peerAddress}</div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                </div>
+              ) : demoView === 'sent' ? (
+                /* Sent View */
+                <div className="flex-1 overflow-y-auto">
+                  <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+                    <div>
+                      <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>Sent</div>
+                      <div className="text-[10px]" style={{ color: 'var(--foreground-muted)' }}>Messages you&apos;ve sent</div>
                     </div>
-                    <div className="flex-1 overflow-y-auto px-6 py-5">
-                      <div className="space-y-4">
-                        {selectedDemo.messages.map((msg) => {
-                          const isSelf = msg.senderInboxId === 'self';
-                          return (
-                            <div key={msg.id} className={['flex', isSelf ? 'justify-end' : 'justify-start'].join(' ')}>
-                              <div
-                                className="card-shiny max-w-[600px] px-4 py-3"
-                                style={{
-                                  background: isSelf ? 'var(--primary-subtle)' : 'var(--surface)',
-                                  border: isSelf ? '1px solid var(--primary)' : '1px solid var(--border)',
-                                  borderRadius: 'var(--radius-xl)'
-                                }}
-                              >
-                                <div className="mb-2 flex items-center justify-between gap-4 text-xs" style={{ color: 'var(--foreground-muted)' }}>
-                                  <div className="font-semibold">{isSelf ? 'You' : (selectedDemo.peerName || 'Peer')}</div>
-                                  <div>{formatTimestamp(msg.sentAt)}</div>
-                                </div>
-                                {msg.isEmail && msg.subject && (
-                                  <div className="mb-2 text-sm font-bold" style={{ color: 'var(--foreground)' }}>{msg.subject}</div>
-                                )}
-                                <div className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: 'var(--foreground)' }}>{msg.content}</div>
-                              </div>
+                  </div>
+                  <div className="p-6">
+                    {DEMO_CONVERSATIONS.map((c) => {
+                      const sentMsgs = c.messages.filter(m => m.senderInboxId === 'self');
+                      return sentMsgs.map((msg) => (
+                        <div key={msg.id} className="mb-3 cursor-pointer transition hover:scale-[1.005]" onClick={() => { setDemoView('inbox'); setDemoSelectedId(c.id); }}>
+                          <div className="card-shiny p-3" style={{ borderRadius: 'var(--radius-lg)' }}>
+                            <div className="flex items-center justify-between gap-2 text-xs" style={{ color: 'var(--foreground-muted)' }}>
+                              <span>To: <span style={{ color: 'var(--foreground)' }}>{c.peerName || c.peerAddress}</span></span>
+                              <span>{formatTimestamp(msg.sentAt)}</span>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div className="px-6 py-4" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
-                      <div className="flex gap-3">
-                        <textarea
-                          className="input min-h-[48px] flex-1 resize-none rounded-2xl"
-                          placeholder="Reply... (demo mode - disabled)"
-                          disabled
-                        />
-                        <button type="button" className="btn-primary shrink-0 disabled:opacity-50" disabled>
-                          Send
-                        </button>
-                      </div>
-                    </div>
+                            {msg.subject && <div className="mt-1 text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{msg.subject}</div>}
+                            <div className="mt-1 text-sm truncate" style={{ color: 'var(--foreground-muted)' }}>{msg.content}</div>
+                          </div>
+                        </div>
+                      ));
+                    })}
                   </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center" style={{ color: 'var(--foreground-muted)' }}>
-                    <div className="text-center">
-                      <svg className="mx-auto mb-3 h-12 w-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                        <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                      <div className="text-sm font-medium">Select a message to read</div>
+                </div>
+              ) : (
+                /* Inbox View */
+                <>
+                  {/* Mail List */}
+                  <section className="w-full max-w-xs shrink-0 overflow-hidden border-r" style={{ borderColor: 'var(--border)' }}>
+                    <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+                      <div>
+                        <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>Inbox</div>
+                        <div className="text-[10px]" style={{ color: 'var(--foreground-muted)' }}>{DEMO_CONVERSATIONS.length + 1} messages</div>
+                      </div>
+                      <button className="rounded-lg p-1.5 transition hover:bg-[var(--surface-hover)]" style={{ color: 'var(--foreground-muted)' }}>
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
                     </div>
-                  </div>
-                )}
-              </section>
+                    <div className="h-full overflow-y-auto">
+                      {/* Welcome row */}
+                      <div
+                        className={`inbox-row ${demoSelectedId === WELCOME_CONVERSATION_ID ? 'selected' : ''}`}
+                        onClick={() => setDemoSelectedId(WELCOME_CONVERSATION_ID)}
+                        style={{ background: demoSelectedId === WELCOME_CONVERSATION_ID ? 'var(--welcome-bg)' : undefined }}
+                      >
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: 'var(--welcome-bg)', color: 'var(--welcome-fg)', border: '1px solid var(--welcome-border)' }}>Hi</div>
+                        <div className="truncate font-semibold text-xs" style={{ color: 'var(--foreground)' }}>XMTP Team</div>
+                        <div className="truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>Welcome</div>
+                        <div className="text-[10px] whitespace-nowrap" style={{ color: 'var(--foreground-subtle)' }}>Now</div>
+                      </div>
+                      {/* Conversations */}
+                      {DEMO_CONVERSATIONS.map((convo) => {
+                        const lastMsg = convo.messages[convo.messages.length - 1];
+                        const subject = lastMsg?.isEmail && lastMsg.subject ? lastMsg.subject : lastMsg?.content.slice(0, 30) + '...';
+                        return (
+                          <div
+                            key={convo.id}
+                            className={`inbox-row ${demoSelectedId === convo.id ? 'selected' : ''}`}
+                            onClick={() => setDemoSelectedId(convo.id)}
+                          >
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border-subtle)' }}>
+                              {(convo.peerName || convo.peerAddress).slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="truncate font-semibold text-xs" style={{ color: 'var(--foreground)' }}>{convo.peerName || convo.peerAddress}</div>
+                            <div className="truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>{subject}</div>
+                            <div className="text-[10px] whitespace-nowrap" style={{ color: 'var(--foreground-subtle)' }}>{formatTimestamp(convo.lastMessageAt)}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  {/* Thread View */}
+                  <section className="flex-1 overflow-hidden" style={{ background: 'var(--card-bg)' }}>
+                    {selectedDemo && 'kind' in selectedDemo && selectedDemo.kind === 'welcome' ? (
+                      <WelcomeThread conversation={selectedDemo} />
+                    ) : selectedDemo && !('kind' in selectedDemo) ? (
+                      <div className="flex h-full flex-col">
+                        <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--foreground-muted)' }}>
+                              {(selectedDemo.peerName || selectedDemo.peerAddress).slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>{selectedDemo.peerName || selectedDemo.peerAddress}</div>
+                              <div className="text-[10px]" style={{ color: 'var(--foreground-muted)' }}>Encrypted • {selectedDemo.messages.length} msgs</div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto px-4 py-4">
+                          <div className="space-y-3">
+                            {selectedDemo.messages.map((msg) => {
+                              const isSelf = msg.senderInboxId === 'self';
+                              return (
+                                <div key={msg.id} className={['flex', isSelf ? 'justify-end' : 'justify-start'].join(' ')}>
+                                  <div
+                                    className="card-shiny max-w-[500px] px-3 py-2"
+                                    style={{
+                                      background: isSelf ? 'var(--primary-subtle)' : 'var(--surface)',
+                                      border: isSelf ? '1px solid var(--primary)' : '1px solid var(--border)',
+                                      borderRadius: 'var(--radius-lg)'
+                                    }}
+                                  >
+                                    <div className="mb-1 flex items-center justify-between gap-3 text-[10px]" style={{ color: 'var(--foreground-muted)' }}>
+                                      <div className="font-semibold">{isSelf ? 'You' : (selectedDemo.peerName || 'Peer')}</div>
+                                      <div>{formatTimestamp(msg.sentAt)}</div>
+                                    </div>
+                                    {msg.isEmail && msg.subject && (
+                                      <div className="mb-1 text-xs font-bold" style={{ color: 'var(--foreground)' }}>{msg.subject}</div>
+                                    )}
+                                    <div className="whitespace-pre-wrap text-xs leading-relaxed" style={{ color: 'var(--foreground)' }}>{msg.content}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+                          <div className="flex gap-2">
+                            <input
+                              className="input flex-1 text-xs"
+                              placeholder="Reply... (demo)"
+                              disabled
+                            />
+                            <button type="button" className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" style={{ background: 'var(--gradient-accent)' }} disabled>
+                              Send
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex h-full items-center justify-center" style={{ color: 'var(--foreground-muted)' }}>
+                        <div className="text-center">
+                          <svg className="mx-auto mb-2 h-10 w-10 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                            <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                          <div className="text-xs font-medium">Select a message</div>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                </>
+              )}
             </div>
           </div>
         </div>
