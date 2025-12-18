@@ -564,7 +564,7 @@ const XMTPWebmailClient: React.FC = () => {
 
   // Demo mode: bypass auth and show full UI with mock data - enable with ?demo in URL
   const [demoMode, setDemoMode] = useState(false);
-  const [demoSelectedId, setDemoSelectedId] = useState<string | null>('welcome-thread');
+  const [demoSelectedId, setDemoSelectedId] = useState<string | null>(null);
   const [demoView, setDemoView] = useState<'inbox' | 'sent' | 'contacts'>('inbox');
 
   useEffect(() => {
@@ -1259,7 +1259,10 @@ const XMTPWebmailClient: React.FC = () => {
                       justifyContent: 'center',
                       gap: '6px'
                     }}
-                    onClick={() => setComposeOpen(true)}
+                    onClick={() => {
+                      setDemoSelectedId(null);
+                      setComposeOpen(true);
+                    }}
                   >
                     <svg className="h-[14px] w-[14px]" style={{ flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path d="M12 4v16m8-8H4" />
@@ -1312,7 +1315,7 @@ const XMTPWebmailClient: React.FC = () => {
             </aside>
 
             {/* Mail List */}
-            <div className="flex min-w-0 flex-1 overflow-hidden card-shiny animate-fade-in delay-2" style={{ borderRadius: '12px' }}>
+            <div className="relative flex min-w-0 flex-1 overflow-hidden card-shiny animate-fade-in delay-2" style={{ borderRadius: '12px' }}>
               {demoView === 'contacts' ? (
                 /* Contacts View */
                 <div className="flex-1 overflow-y-auto p-4">
@@ -1326,7 +1329,11 @@ const XMTPWebmailClient: React.FC = () => {
                         key={c.id}
                         className="card-shiny flex items-center gap-3 p-3 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg animate-slide-up"
                         style={{ borderRadius: '10px', animationDelay: `${idx * 50}ms` }}
-                        onClick={() => { setDemoView('inbox'); setDemoSelectedId(c.id); }}
+                        onClick={() => {
+                          setComposeOpen(false);
+                          setDemoView('inbox');
+                          setDemoSelectedId(c.id);
+                        }}
                       >
                         <div className="flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
                           {(c.peerName || c.peerAddress).slice(0, 2).toUpperCase()}
@@ -1356,7 +1363,11 @@ const XMTPWebmailClient: React.FC = () => {
                           key={msg.id}
                           className="card-shiny p-3 cursor-pointer transition-all hover:scale-[1.01] animate-slide-up"
                           style={{ borderRadius: '10px', animationDelay: `${idx * 50}ms` }}
-                          onClick={() => { setDemoView('inbox'); setDemoSelectedId(c.id); }}
+                          onClick={() => {
+                            setComposeOpen(false);
+                            setDemoView('inbox');
+                            setDemoSelectedId(c.id);
+                          }}
                         >
                           <div className="flex items-center justify-between gap-2 text-[11px]" style={{ color: 'var(--foreground-muted)' }}>
                             <span>To: <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{c.peerName || c.peerAddress}</span></span>
@@ -1398,7 +1409,10 @@ const XMTPWebmailClient: React.FC = () => {
                       <button
                         type="button"
                         className="inbox-row flex w-full items-center gap-3 px-4 py-3 text-left animate-fade-in"
-                        onClick={() => setDemoSelectedId(WELCOME_CONVERSATION_ID)}
+                        onClick={() => {
+                          setComposeOpen(false);
+                          setDemoSelectedId(WELCOME_CONVERSATION_ID);
+                        }}
                       >
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1431,7 +1445,10 @@ const XMTPWebmailClient: React.FC = () => {
                             key={convo.id}
                             className="inbox-row flex w-full items-center gap-3 px-4 py-3 text-left animate-fade-in"
                             style={{ animationDelay: `${(idx + 1) * 50}ms` }}
-                            onClick={() => setDemoSelectedId(convo.id)}
+                            onClick={() => {
+                              setComposeOpen(false);
+                              setDemoSelectedId(convo.id);
+                            }}
                           >
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-transform hover:scale-105" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border)' }}>
                               {(convo.peerName || convo.peerAddress).slice(0, 2).toUpperCase()}
@@ -1445,199 +1462,201 @@ const XMTPWebmailClient: React.FC = () => {
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* Thread Modal Overlay */}
-            {demoSelectedId && (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
-                style={{ background: 'var(--overlay)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
-                onClick={() => setDemoSelectedId(null)}
-              >
-                <div
-                  className="modal-glass w-full max-w-2xl flex flex-col overflow-hidden animate-scale-in"
-                  style={{ borderRadius: 'var(--radius-2xl)', height: '600px', maxHeight: 'calc(100vh - 2rem)' }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {selectedDemo && 'kind' in selectedDemo && selectedDemo.kind === 'welcome' ? (
-                    <WelcomeThread conversation={selectedDemo} />
-                  ) : selectedDemo && !('kind' in selectedDemo) ? (
-                    <>
-                      {/* Modal Header */}
-                      <div className="flex items-center justify-between px-4 py-3 glass-strong shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
-                            {(selectedDemo.peerName || selectedDemo.peerAddress).slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="text-base font-bold" style={{ color: 'var(--foreground)' }}>{selectedDemo.peerName || selectedDemo.peerAddress}</div>
-                            <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--foreground-muted)' }}>
-                              <span className="flex items-center gap-1">
-                                <svg className="h-3 w-3" style={{ color: 'var(--accent-success)' }} fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
-                                </svg>
-                                Encrypted
-                              </span>
-                              <span>•</span>
-                              <span>{selectedDemo.messages.length} messages</span>
+              {/* Thread Modal Overlay (Demo) */}
+              {demoSelectedId && (
+                <div className="absolute inset-0 z-20 animate-fade-in">
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: 'var(--overlay)', opacity: 0.18 }}
+                    onClick={() => setDemoSelectedId(null)}
+                  />
+                  <div
+                    className="absolute inset-2 modal-glass flex flex-col overflow-hidden animate-scale-in"
+                    style={{ borderRadius: 'var(--radius-2xl)' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {selectedDemo && 'kind' in selectedDemo && selectedDemo.kind === 'welcome' ? (
+                      <WelcomeThread conversation={selectedDemo} />
+                    ) : selectedDemo && !('kind' in selectedDemo) ? (
+                      <>
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-4 py-3 glass-strong shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'var(--gradient-accent)', color: 'white', boxShadow: 'var(--shadow-glow-sm)' }}>
+                              {(selectedDemo.peerName || selectedDemo.peerAddress).slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="text-base font-bold" style={{ color: 'var(--foreground)' }}>{selectedDemo.peerName || selectedDemo.peerAddress}</div>
+                              <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--foreground-muted)' }}>
+                                <span className="flex items-center gap-1">
+                                  <svg className="h-3 w-3" style={{ color: 'var(--accent-success)' }} fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                                  </svg>
+                                  Encrypted
+                                </span>
+                                <span>•</span>
+                                <span>{selectedDemo.messages.length} messages</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn-nav"
-                          style={{ padding: '6px' }}
-                          onClick={() => setDemoSelectedId(null)}
-                        >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                      {/* Modal Body - Messages */}
-                      <div className="flex-1 overflow-y-auto px-4 py-4" style={{ background: 'var(--background-subtle)' }}>
-                        <div className="space-y-3">
-                          {selectedDemo.messages.map((msg, idx) => {
-                            const isSelf = msg.senderInboxId === 'self';
-                            return (
-                              <div key={msg.id} className={`flex animate-slide-up ${isSelf ? 'justify-end' : 'justify-start'}`} style={{ animationDelay: `${idx * 50}ms` }}>
-                                <div
-                                  className="max-w-[360px] px-4 py-3"
-                                  style={{
-                                    background: isSelf ? 'var(--gradient-accent)' : 'var(--surface)',
-                                    border: isSelf ? 'none' : '1px solid var(--border)',
-                                    borderRadius: isSelf ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                                    boxShadow: isSelf ? 'var(--shadow-glow-sm)' : 'var(--shadow-sm)'
-                                  }}
-                                >
-                                  <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px]" style={{ color: isSelf ? 'rgba(255,255,255,0.8)' : 'var(--foreground-muted)' }}>
-                                    <div className="font-semibold">{isSelf ? 'You' : (selectedDemo.peerName || 'Peer')}</div>
-                                    <div className="font-mono">{formatTimestamp(msg.sentAt)}</div>
-                                  </div>
-                                  {msg.isEmail && msg.subject && (
-                                    <div className="mb-1.5 text-sm font-semibold" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>{msg.subject}</div>
-                                  )}
-                                  <div className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>{msg.content}</div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      {/* Modal Footer - Reply */}
-                      <div className="px-4 py-3 glass-strong shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
-                        <div className="flex gap-2">
-                          <input
-                            className="input flex-1 text-sm"
-                            placeholder="Reply... (demo mode)"
-                            disabled
-                            style={{ height: '40px' }}
-                          />
                           <button
                             type="button"
-                            className="btn-primary flex items-center gap-1.5 disabled:opacity-50 disabled:transform-none"
-                            style={{ height: '40px', paddingLeft: '1rem', paddingRight: '1rem' }}
-                            disabled
+                            className="btn-nav"
+                            style={{ padding: '6px' }}
+                            onClick={() => setDemoSelectedId(null)}
                           >
-                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path d="M6 18L18 6M6 6l12 12" />
                             </svg>
-                            Send
                           </button>
                         </div>
+                        {/* Modal Body - Messages */}
+                        <div className="flex-1 overflow-y-auto px-4 py-4" style={{ background: 'var(--background-subtle)' }}>
+                          <div className="space-y-3">
+                            {selectedDemo.messages.map((msg, idx) => {
+                              const isSelf = msg.senderInboxId === 'self';
+                              return (
+                                <div key={msg.id} className={`flex animate-slide-up ${isSelf ? 'justify-end' : 'justify-start'}`} style={{ animationDelay: `${idx * 50}ms` }}>
+                                  <div
+                                    className="max-w-[360px] px-4 py-3"
+                                    style={{
+                                      background: isSelf ? 'var(--gradient-accent)' : 'var(--surface)',
+                                      border: isSelf ? 'none' : '1px solid var(--border)',
+                                      borderRadius: isSelf ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                                      boxShadow: isSelf ? 'var(--shadow-glow-sm)' : 'var(--shadow-sm)'
+                                    }}
+                                  >
+                                    <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px]" style={{ color: isSelf ? 'rgba(255,255,255,0.8)' : 'var(--foreground-muted)' }}>
+                                      <div className="font-semibold">{isSelf ? 'You' : (selectedDemo.peerName || 'Peer')}</div>
+                                      <div className="font-mono">{formatTimestamp(msg.sentAt)}</div>
+                                    </div>
+                                    {msg.isEmail && msg.subject && (
+                                      <div className="mb-1.5 text-sm font-semibold" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>{msg.subject}</div>
+                                    )}
+                                    <div className="whitespace-pre-wrap text-sm leading-relaxed" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>{msg.content}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {/* Modal Footer - Reply */}
+                        <div className="px-4 py-3 glass-strong shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+                          <div className="flex gap-2">
+                            <input
+                              className="input flex-1 text-sm"
+                              placeholder="Reply... (demo mode)"
+                              disabled
+                              style={{ height: '40px' }}
+                            />
+                            <button
+                              type="button"
+                              className="btn-primary flex items-center gap-1.5 disabled:opacity-50 disabled:transform-none"
+                              style={{ height: '40px', paddingLeft: '1rem', paddingRight: '1rem' }}
+                              disabled
+                            >
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                              </svg>
+                              Send
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+
+              {/* Compose Modal for Demo Mode */}
+              {composeOpen && (
+                <div className="absolute inset-0 z-30 animate-fade-in">
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: 'var(--overlay)', opacity: 0.18 }}
+                    onClick={() => setComposeOpen(false)}
+                  />
+                  <div
+                    className="absolute inset-2 modal-glass flex flex-col overflow-hidden animate-scale-in"
+                    style={{ borderRadius: '16px' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between px-4 py-3 glass-strong shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+                      <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>New Message</div>
+                      <button
+                        type="button"
+                        className="btn-nav"
+                        style={{ padding: '6px' }}
+                        onClick={() => setComposeOpen(false)}
+                      >
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Modal Body */}
+                    <div className="flex-1 p-4 space-y-3" style={{ background: 'var(--background-subtle)' }}>
+                      <div>
+                        <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>To</label>
+                        <input
+                          className="input w-full text-sm"
+                          placeholder="vitalik.eth or 0x..."
+                          style={{ height: '36px', borderRadius: '8px', lineHeight: '34px', padding: '0 12px' }}
+                        />
                       </div>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>Subject</label>
+                        <input
+                          className="input w-full text-sm"
+                          placeholder="(optional)"
+                          style={{ height: '36px', borderRadius: '8px', lineHeight: '34px', padding: '0 12px' }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>Message</label>
+                        <textarea
+                          className="input w-full text-sm resize-none"
+                          placeholder="Write your message..."
+                          rows={6}
+                          style={{ borderRadius: '8px', padding: '10px 12px' }}
+                        />
+                      </div>
+                    </div>
 
-        {/* Compose Modal for Demo Mode */}
-        {composeOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
-            style={{ background: 'var(--overlay)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
-            onClick={() => setComposeOpen(false)}
-          >
-            <div
-              className="modal-glass w-full max-w-lg flex flex-col overflow-hidden animate-scale-in"
-              style={{ borderRadius: '16px' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between px-4 py-3 glass-strong shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
-                <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>New Message</div>
-                <button
-                  type="button"
-                  className="btn-nav"
-                  style={{ padding: '6px' }}
-                  onClick={() => setComposeOpen(false)}
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="flex-1 p-4 space-y-3" style={{ background: 'var(--background-subtle)' }}>
-                <div>
-                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>To</label>
-                  <input
-                    className="input w-full text-sm"
-                    placeholder="vitalik.eth or 0x..."
-                    style={{ height: '36px', borderRadius: '8px', lineHeight: '34px', padding: '0 12px' }}
-                  />
+                    {/* Modal Footer */}
+                    <div className="px-4 py-3 glass-strong shrink-0 flex items-center justify-end gap-2" style={{ borderTop: '1px solid var(--border)' }}>
+                      <button
+                        type="button"
+                        className="btn-nav"
+                        style={{ padding: '8px 16px', fontSize: '13px' }}
+                        onClick={() => setComposeOpen(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-primary flex items-center gap-1.5"
+                        style={{ height: '34px', padding: '0 16px', fontSize: '13px', borderRadius: '8px' }}
+                        onClick={() => {
+                          alert('Demo mode: Messages cannot be sent. Connect a wallet to send real messages!');
+                          setComposeOpen(false);
+                        }}
+                      >
+                        <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        Send
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>Subject</label>
-                  <input
-                    className="input w-full text-sm"
-                    placeholder="(optional)"
-                    style={{ height: '36px', borderRadius: '8px', lineHeight: '34px', padding: '0 12px' }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>Message</label>
-                  <textarea
-                    className="input w-full text-sm resize-none"
-                    placeholder="Write your message..."
-                    rows={6}
-                    style={{ borderRadius: '8px', padding: '10px 12px' }}
-                  />
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="px-4 py-3 glass-strong shrink-0 flex items-center justify-end gap-2" style={{ borderTop: '1px solid var(--border)' }}>
-                <button
-                  type="button"
-                  className="btn-nav"
-                  style={{ padding: '8px 16px', fontSize: '13px' }}
-                  onClick={() => setComposeOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary flex items-center gap-1.5"
-                  style={{ height: '34px', padding: '0 16px', fontSize: '13px', borderRadius: '8px' }}
-                  onClick={() => {
-                    alert('Demo mode: Messages cannot be sent. Connect a wallet to send real messages!');
-                    setComposeOpen(false);
-                  }}
-                >
-                  <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                  Send
-                </button>
-              </div>
+              )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     );
   }
