@@ -1549,6 +1549,91 @@ const XMTPWebmailClient: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Compose Modal for Demo Mode */}
+        {composeOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
+            style={{ background: 'var(--overlay)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+            onClick={() => setComposeOpen(false)}
+          >
+            <div
+              className="modal-glass w-full max-w-lg flex flex-col overflow-hidden animate-scale-in"
+              style={{ borderRadius: '16px' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-4 py-3 glass-strong shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+                <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>New Message</div>
+                <button
+                  type="button"
+                  className="btn-nav"
+                  style={{ padding: '6px' }}
+                  onClick={() => setComposeOpen(false)}
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 p-4 space-y-3" style={{ background: 'var(--background-subtle)' }}>
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)' }}>To</label>
+                  <input
+                    className="input w-full text-sm"
+                    placeholder="vitalik.eth or 0x..."
+                    style={{ height: '36px', borderRadius: '8px' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)' }}>Subject</label>
+                  <input
+                    className="input w-full text-sm"
+                    placeholder="(optional)"
+                    style={{ height: '36px', borderRadius: '8px' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)' }}>Message</label>
+                  <textarea
+                    className="input w-full text-sm resize-none"
+                    placeholder="Write your message..."
+                    rows={6}
+                    style={{ borderRadius: '8px', padding: '10px' }}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-4 py-3 glass-strong shrink-0 flex items-center justify-end gap-2" style={{ borderTop: '1px solid var(--border)' }}>
+                <button
+                  type="button"
+                  className="btn-nav"
+                  style={{ padding: '8px 16px', fontSize: '13px' }}
+                  onClick={() => setComposeOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary flex items-center gap-1.5"
+                  style={{ height: '34px', padding: '0 16px', fontSize: '13px', borderRadius: '8px' }}
+                  onClick={() => {
+                    alert('Demo mode: Messages cannot be sent. Connect a wallet to send real messages!');
+                    setComposeOpen(false);
+                  }}
+                >
+                  <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                  Send
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
