@@ -1203,15 +1203,15 @@ const XMTPWebmailClient: React.FC = () => {
             {/* Right: Theme Toggle + Settings + Identity */}
             <div className="flex items-center gap-2">
               {/* Theme Toggle */}
-              <div className="rounded-lg p-1 card-shiny" style={{ background: 'var(--surface-glass)' }}>
+              <div className="btn-nav" style={{ padding: '6px' }}>
                 <ThemeToggle />
               </div>
 
               {/* Settings */}
               <button
                 type="button"
-                className="rounded-lg p-1.5 transition-all hover:scale-105"
-                style={{ color: 'var(--foreground-muted)', background: 'var(--surface-glass)', border: '1px solid var(--border)' }}
+                className="btn-nav"
+                style={{ padding: '6px' }}
                 title="Settings"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1224,7 +1224,7 @@ const XMTPWebmailClient: React.FC = () => {
               <div className="h-6 w-px" style={{ background: 'var(--border)' }}></div>
 
               {/* Identity / Profile */}
-              <button type="button" className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition-all hover:scale-[1.02]" style={{ background: 'var(--surface-glass)', border: '1px solid var(--border)' }}>
+              <button type="button" className="btn-nav flex items-center gap-2" style={{ padding: '4px 8px 4px 4px' }}>
                 <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: 'var(--gradient-accent)' }}>
                   DP
                 </div>
@@ -1268,41 +1268,21 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Inbox */}
                   <button
                     onClick={() => setDemoView('inbox')}
-                    className="flex items-center gap-2 transition-all hover:translate-x-0.5"
-                    style={{
-                      height: '34px',
-                      padding: '0 10px',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      color: demoView === 'inbox' ? 'var(--foreground)' : 'var(--foreground-muted)',
-                      background: demoView === 'inbox' ? 'var(--primary-subtle)' : 'transparent',
-                      border: demoView === 'inbox' ? '1px solid var(--primary)' : '1px solid transparent',
-                      boxShadow: demoView === 'inbox' ? 'var(--shadow-glow-sm)' : 'none'
-                    }}
+                    className={`btn-nav flex items-center gap-2 ${demoView === 'inbox' ? 'active' : ''}`}
+                    style={{ height: '34px', fontSize: '13px' }}
                   >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z" />
                       <path d="M22 6l-10 7L2 6" />
                     </svg>
                     Inbox
-                    <span className="ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: 'var(--gradient-accent)', color: 'white' }}>{DEMO_CONVERSATIONS.length + 1}</span>
+                    <span className="ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: demoView === 'inbox' ? 'rgba(255,255,255,0.25)' : 'var(--gradient-accent)', color: 'white' }}>{DEMO_CONVERSATIONS.length + 1}</span>
                   </button>
                   {/* Sent */}
                   <button
                     onClick={() => setDemoView('sent')}
-                    className="flex items-center gap-2 transition-all hover:translate-x-0.5"
-                    style={{
-                      height: '34px',
-                      padding: '0 10px',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      color: demoView === 'sent' ? 'var(--foreground)' : 'var(--foreground-muted)',
-                      background: demoView === 'sent' ? 'var(--primary-subtle)' : 'transparent',
-                      border: demoView === 'sent' ? '1px solid var(--primary)' : '1px solid transparent',
-                      boxShadow: demoView === 'sent' ? 'var(--shadow-glow-sm)' : 'none'
-                    }}
+                    className={`btn-nav flex items-center gap-2 ${demoView === 'sent' ? 'active' : ''}`}
+                    style={{ height: '34px', fontSize: '13px' }}
                   >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -1312,18 +1292,8 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Contacts */}
                   <button
                     onClick={() => setDemoView('contacts')}
-                    className="flex items-center gap-2 transition-all hover:translate-x-0.5"
-                    style={{
-                      height: '34px',
-                      padding: '0 10px',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      color: demoView === 'contacts' ? 'var(--foreground)' : 'var(--foreground-muted)',
-                      background: demoView === 'contacts' ? 'var(--primary-subtle)' : 'transparent',
-                      border: demoView === 'contacts' ? '1px solid var(--primary)' : '1px solid transparent',
-                      boxShadow: demoView === 'contacts' ? 'var(--shadow-glow-sm)' : 'none'
-                    }}
+                    className={`btn-nav flex items-center gap-2 ${demoView === 'contacts' ? 'active' : ''}`}
+                    style={{ height: '34px', fontSize: '13px' }}
                   >
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1508,8 +1478,8 @@ const XMTPWebmailClient: React.FC = () => {
                         </div>
                         <button
                           type="button"
-                          className="rounded-lg p-2 transition-all hover:scale-110"
-                          style={{ color: 'var(--foreground-muted)', background: 'var(--surface-glass)', border: '1px solid var(--border)' }}
+                          className="btn-nav"
+                          style={{ padding: '6px' }}
                           onClick={() => setDemoSelectedId(null)}
                         >
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
