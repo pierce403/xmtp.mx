@@ -1230,21 +1230,23 @@ const XMTPWebmailClient: React.FC = () => {
             {/* Sidebar */}
             <aside className="flex w-[180px] shrink-0 flex-col gap-3">
               <div className="card-shiny p-3 backdrop-blur-md" style={{ background: 'var(--sidebar-bg)', borderRadius: 'var(--radius-xl)' }}>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-white transition hover:scale-[1.02] active:scale-[0.98]"
-                  style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-sm)' }}
-                  onClick={() => setComposeOpen(true)}
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path d="M12 4v16m8-8H4" />
-                  </svg>
-                  Compose
-                </button>
-                <nav className="mt-3 space-y-0.5">
+                <nav className="space-y-1">
+                  {/* Compose */}
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                    style={{ background: 'var(--gradient-accent)' }}
+                    onClick={() => setComposeOpen(true)}
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path d="M12 4v16m8-8H4" />
+                    </svg>
+                    Compose
+                  </button>
+                  {/* Inbox */}
                   <button
                     onClick={() => setDemoView('inbox')}
-                    className="row-highlight flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition"
+                    className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition"
                     style={{
                       color: demoView === 'inbox' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'inbox' ? 'var(--primary-subtle)' : 'transparent'
@@ -1257,24 +1259,12 @@ const XMTPWebmailClient: React.FC = () => {
                       </svg>
                       Inbox
                     </span>
-                    {demoView === 'inbox' && <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>{DEMO_CONVERSATIONS.length + 1}</span>}
+                    <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: demoView === 'inbox' ? 'var(--primary)' : 'var(--surface)', color: demoView === 'inbox' ? 'var(--primary-foreground)' : 'var(--foreground-muted)' }}>{DEMO_CONVERSATIONS.length + 1}</span>
                   </button>
-                  <button
-                    onClick={() => setDemoView('contacts')}
-                    className="row-highlight flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition"
-                    style={{
-                      color: demoView === 'contacts' ? 'var(--foreground)' : 'var(--foreground-muted)',
-                      background: demoView === 'contacts' ? 'var(--primary-subtle)' : 'transparent'
-                    }}
-                  >
-                    <svg className="h-4 w-4" style={{ color: demoView === 'contacts' ? 'var(--primary)' : 'inherit' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    Contacts
-                  </button>
+                  {/* Sent */}
                   <button
                     onClick={() => setDemoView('sent')}
-                    className="row-highlight flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition"
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition"
                     style={{
                       color: demoView === 'sent' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'sent' ? 'var(--primary-subtle)' : 'transparent'
@@ -1284,6 +1274,20 @@ const XMTPWebmailClient: React.FC = () => {
                       <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                     Sent
+                  </button>
+                  {/* Contacts */}
+                  <button
+                    onClick={() => setDemoView('contacts')}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition"
+                    style={{
+                      color: demoView === 'contacts' ? 'var(--foreground)' : 'var(--foreground-muted)',
+                      background: demoView === 'contacts' ? 'var(--primary-subtle)' : 'transparent'
+                    }}
+                  >
+                    <svg className="h-4 w-4" style={{ color: demoView === 'contacts' ? 'var(--primary)' : 'inherit' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Contacts
                   </button>
                 </nav>
               </div>
@@ -1347,7 +1351,7 @@ const XMTPWebmailClient: React.FC = () => {
                 /* Inbox View */
                 <>
                   {/* Mail List */}
-                  <section className="w-full max-w-xs shrink-0 overflow-hidden border-r" style={{ borderColor: 'var(--border)' }}>
+                  <section className="w-full max-w-xs shrink-0 overflow-hidden border-r flex flex-col" style={{ borderColor: 'var(--border)' }}>
                     <div className="flex items-center justify-between px-3 py-2" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
                       <div>
                         <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>Inbox</div>
@@ -1359,7 +1363,16 @@ const XMTPWebmailClient: React.FC = () => {
                         </svg>
                       </button>
                     </div>
-                    <div className="h-full overflow-y-auto">
+                    {/* Search */}
+                    <div className="px-2 py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                      <input
+                        className="input w-full text-xs"
+                        placeholder="Search messages..."
+                        value={search}
+                        onChange={(e) => setSearch(e.currentTarget.value)}
+                      />
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
                       {/* Welcome row */}
                       <div
                         className={`inbox-row ${demoSelectedId === WELCOME_CONVERSATION_ID ? 'selected' : ''}`}
