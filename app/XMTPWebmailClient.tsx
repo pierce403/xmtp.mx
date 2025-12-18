@@ -15,13 +15,36 @@ type ThirdwebClientIdStatus = 'missing' | 'checking' | 'valid' | 'invalid';
 
 type StartupStatusTone = 'ok' | 'pending' | 'error' | 'neutral';
 
-type InboxDetailsMap = Record<string, { address?: string; identifiers?: Identifier[] }>; 
+const WELCOME_CONVERSATION_ID = 'welcome-thread';
 
-type ConversationSummary = {
+type InboxDetailsMap = Record<string, { address?: string; identifiers?: Identifier[] }>;
+
+type XmtpConversationSummary = {
+  kind: 'xmtp';
+  id: string;
   conversation: Dm;
   peerInboxId?: string;
   peerAddress?: string;
   lastMessage?: DecodedMessage;
+};
+
+type WelcomeConversationSummary = {
+  kind: 'welcome';
+  id: typeof WELCOME_CONVERSATION_ID;
+  subject: string;
+  preview: string;
+  body: string;
+  timestamp: Date;
+};
+
+type ConversationListItem = XmtpConversationSummary | WelcomeConversationSummary;
+
+const WELCOME_MESSAGE: Omit<WelcomeConversationSummary, 'kind' | 'id'> = {
+  subject: 'Welcome to xmtp.mx',
+  preview: 'Here’s what this XMTP inbox does and how to try it out.',
+  body:
+    'Hi there,\n\nThanks for opening xmtp.mx — a Gmail-inspired inbox that speaks the XMTP messaging network.\n\nWhen you connect a wallet, we generate an XMTP identity tied to your address and render conversations like email threads. Messages are encrypted end-to-end and stay on XMTP; there is no central inbox server here.\n\nYou can send to onchain addresses or ENS names (e.g. deanpierce.eth). SMTP delivery is on the roadmap, but today you’ll want to message XMTP peers.\n\nIf something looks off, try refreshing after connecting your wallet or double-checking your thirdweb client ID.\n\nHave fun, and thanks for testing!',
+  timestamp: new Date(),
 };
 
 const ETHEREUM_IDENTIFIER_KIND: IdentifierKind = 'Ethereum';
@@ -283,9 +306,11 @@ type ThreadProps = {
   selfInboxId?: string;
   inboxDetails: InboxDetailsMap;
   onReply: (options: { subject?: string; body: string }) => Promise<void>;
+  threadTitle?: string;
+  threadSubtitle?: string;
 };
 
-function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply }: ThreadProps) {
+function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply, threadTitle, threadSubtitle }: ThreadProps) {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
@@ -325,13 +350,13 @@ function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply }: 
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-      <div className="border-b px-5 py-4">
-        <div className="text-sm font-semibold text-neutral-900">{shortenInboxId(conversation.id)}</div>
-        <div className="text-xs text-neutral-500">XMTP thread</div>
+    <div className="flex h-full flex-col overflow-hidden rounded-3xl bg-white/90 shadow-xl ring-1 ring-black/5">
+      <div className="border-b bg-gradient-to-r from-white to-blue-50/70 px-6 py-5">
+        <div className="text-lg font-semibold text-neutral-900">{threadTitle ?? shortenInboxId(conversation.id)}</div>
+        <div className="text-xs text-neutral-600">{threadSubtitle ?? 'XMTP thread'}</div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+      <div className="flex-1 overflow-y-auto px-6 py-5">
         {messages.length === 0 ? (
           <div className="text-sm text-neutral-500">No messages yet.</div>
         ) : (
@@ -345,8 +370,8 @@ function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply }: 
                 <div key={message.id} className={['flex', isSelf ? 'justify-end' : 'justify-start'].join(' ')}>
                   <div
                     className={[
-                      'max-w-[720px] rounded-2xl border px-4 py-3 shadow-sm',
-                      isSelf ? 'border-blue-200 bg-blue-50' : 'border-neutral-200 bg-white',
+                      'max-w-[720px] rounded-2xl border px-4 py-3 shadow-sm backdrop-blur',
+                      isSelf ? 'border-blue-200 bg-blue-50/80' : 'border-neutral-200 bg-white/90',
                     ].join(' ')}
                   >
                     <div className="mb-2 flex items-center justify-between gap-4 text-xs text-neutral-500">
@@ -373,23 +398,60 @@ function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply }: 
         )}
       </div>
 
-      <div className="border-t p-4">
+      <div className="border-t bg-neutral-50/80 px-6 py-4">
         {sendError ? <div className="mb-2 text-xs text-red-600">{sendError}</div> : null}
         <div className="flex gap-2">
           <textarea
-            className="min-h-[44px] flex-1 resize-none rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+            className="min-h-[44px] flex-1 resize-none rounded-2xl border border-neutral-200 bg-white px-3 py-2 text-sm outline-none shadow-inner focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
             placeholder="Reply…"
             value={replyBody}
             onChange={(e) => setReplyBody(e.currentTarget.value)}
           />
           <button
             type="button"
-            className="h-[44px] shrink-0 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            className="h-[44px] shrink-0 rounded-2xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
             onClick={() => void handleSendReply()}
             disabled={!replyBody.trim() || isSending}
           >
             {isSending ? 'Sending…' : 'Send'}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WelcomeThread({ conversation }: { conversation: WelcomeConversationSummary }) {
+  const paragraphs = useMemo(() => conversation.body.split('\n\n'), [conversation.body]);
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-3xl bg-white/90 shadow-xl ring-1 ring-black/5">
+      <div className="border-b bg-gradient-to-r from-white to-amber-50/70 px-6 py-5">
+        <div className="text-lg font-semibold text-neutral-900">{conversation.subject}</div>
+        <div className="text-xs text-neutral-600">From XMTP Mailroom • {formatTimestamp(conversation.timestamp)}</div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">
+          <span className="h-2 w-2 rounded-full bg-amber-500" />
+          Local welcome email (for your eyes only)
+        </div>
+
+        <div className="space-y-4 text-sm text-neutral-800">
+          {paragraphs.map((para, idx) => (
+            <p key={idx} className="leading-relaxed">
+              {para}
+            </p>
+          ))}
+
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-blue-900 shadow-sm">
+            <div className="text-sm font-semibold">Quick start</div>
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-[13px]">
+              <li>Connect your wallet with the button above. We’ll show your XMTP inbox instantly.</li>
+              <li>Hit Compose to message an ENS name or 0x address. We style threads like email, but they stay on XMTP.</li>
+              <li>Replies are encrypted end-to-end. There’s no central mail server in the middle.</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
@@ -415,7 +477,7 @@ const XMTPWebmailClient: React.FC = () => {
   const [xmtpClient, setXmtpClient] = useState<Client | null>(null);
   const [xmtpError, setXmtpError] = useState<string | null>(null);
   const [xmtpLoading, setXmtpLoading] = useState(false);
-  const [conversationsById, setConversationsById] = useState<Record<string, ConversationSummary>>({});
+  const [conversationsById, setConversationsById] = useState<Record<string, XmtpConversationSummary>>({});
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, DecodedMessage[]>>({});
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [inboxDetails, setInboxDetails] = useState<InboxDetailsMap>({});
@@ -617,16 +679,19 @@ const XMTPWebmailClient: React.FC = () => {
     [debug, xmtpEnv],
   );
 
-  const upsertConversationSummary = useCallback((summary: ConversationSummary) => {
+  const upsertConversationSummary = useCallback((summary: Omit<XmtpConversationSummary, 'id' | 'kind'>) => {
     setConversationsById((prev) => {
-      const existing = prev[summary.conversation.id];
+      const id = summary.conversation.id;
+      const existing = prev[id];
       return {
         ...prev,
-        [summary.conversation.id]: {
+        [id]: {
+          kind: 'xmtp',
+          id,
           ...existing,
           ...summary,
         },
-      };
+      } satisfies Record<string, XmtpConversationSummary>;
     });
   }, []);
 
@@ -659,11 +724,13 @@ const XMTPWebmailClient: React.FC = () => {
             (conversation as Dm).lastMessage().catch(() => undefined),
           ]);
           return {
+            kind: 'xmtp' as const,
+            id: conversation.id,
             conversation: conversation as Dm,
             lastMessage: lastMessage ?? undefined,
             peerInboxId: peerInfo.peerInboxId,
             peerAddress: peerInfo.peerAddress,
-          } satisfies ConversationSummary;
+          } satisfies XmtpConversationSummary;
         }),
       );
 
@@ -799,16 +866,6 @@ const XMTPWebmailClient: React.FC = () => {
   }, [initializeXmtpClient]);
 
   useEffect(() => {
-    if (selectedConversationId) return;
-    const first = Object.values(conversationsById).sort((a, b) => {
-      const aTime = a.lastMessage ? Number(a.lastMessage.sentAtNs) : Number(a.conversation.createdAtNs ?? 0n);
-      const bTime = b.lastMessage ? Number(b.lastMessage.sentAtNs) : Number(b.conversation.createdAtNs ?? 0n);
-      return bTime - aTime;
-    })[0];
-    if (first) setSelectedConversationId(first.conversation.id);
-  }, [conversationsById, selectedConversationId]);
-
-  useEffect(() => {
     if (!xmtpClient) {
       setConversationsById({});
       setMessagesByConversation({});
@@ -877,19 +934,26 @@ const XMTPWebmailClient: React.FC = () => {
   useEffect(() => {
     const timer = xmtpLoading
       ? setTimeout(() => {
-          setXmtpInitStalled(true);
-        }, 10_000)
+      setXmtpInitStalled(true);
+    }, 10_000)
       : undefined;
     return () => {
       if (timer) clearTimeout(timer);
     };
   }, [xmtpLoading]);
 
-  const conversationList = useMemo(() => {
+  const welcomeConversation = useMemo<WelcomeConversationSummary>(
+    () => ({ kind: 'welcome', id: WELCOME_CONVERSATION_ID, ...WELCOME_MESSAGE }),
+    [],
+  );
+
+  const xmtpConversationList = useMemo<XmtpConversationSummary[]>(() => {
+    const trimmed = search.trim().toLowerCase();
     const list = Object.values(conversationsById);
     const filtered = list.filter((c) => {
       const label = c.peerAddress ?? c.peerInboxId ?? c.conversation.id;
-      return label.toLowerCase().includes(search.trim().toLowerCase());
+      if (!trimmed) return true;
+      return label.toLowerCase().includes(trimmed);
     });
     return filtered.sort((a, b) => {
       const aTime = a.lastMessage ? Number(a.lastMessage.sentAtNs) : Number(a.conversation.createdAtNs ?? 0n);
@@ -898,13 +962,46 @@ const XMTPWebmailClient: React.FC = () => {
     });
   }, [conversationsById, search]);
 
-  const selectedConversation = selectedConversationId ? conversationsById[selectedConversationId]?.conversation ?? null : null;
-  const selectedMessages = selectedConversationId ? messagesByConversation[selectedConversationId] ?? [] : [];
+  const conversationList = useMemo<ConversationListItem[]>(() => {
+    const trimmed = search.trim().toLowerCase();
+    const matchesWelcome =
+      !trimmed ||
+      welcomeConversation.subject.toLowerCase().includes(trimmed) ||
+      welcomeConversation.preview.toLowerCase().includes(trimmed) ||
+      welcomeConversation.body.toLowerCase().includes(trimmed);
+
+    const withWelcome: ConversationListItem[] = matchesWelcome ? [welcomeConversation, ...xmtpConversationList] : xmtpConversationList;
+    return withWelcome;
+  }, [search, welcomeConversation, xmtpConversationList]);
 
   useEffect(() => {
-    if (!selectedConversation) return;
+    if (!conversationList.length) {
+      setSelectedConversationId(null);
+      return;
+    }
+
+    if (!selectedConversationId) {
+      setSelectedConversationId(conversationList[0]?.id ?? null);
+      return;
+    }
+
+    const stillExists = conversationList.some((item) => item.id === selectedConversationId);
+    if (!stillExists) {
+      setSelectedConversationId(conversationList[0]?.id ?? null);
+    }
+  }, [conversationList, selectedConversationId]);
+
+  const selectedConversation = useMemo(() => {
+    if (!selectedConversationId) return null;
+    return conversationList.find((item) => item.id === selectedConversationId) ?? null;
+  }, [conversationList, selectedConversationId]);
+
+  const selectedMessages = selectedConversation?.kind === 'xmtp' ? messagesByConversation[selectedConversation.id] ?? [] : [];
+
+  useEffect(() => {
+    if (!selectedConversation || selectedConversation.kind !== 'xmtp') return;
     if (messagesByConversation[selectedConversation.id]?.length) return;
-    void loadMessagesForConversation(selectedConversation);
+    void loadMessagesForConversation(selectedConversation.conversation);
   }, [loadMessagesForConversation, messagesByConversation, selectedConversation]);
 
   const ensProvider = useMemo(() => {
@@ -923,15 +1020,14 @@ const XMTPWebmailClient: React.FC = () => {
   };
 
   const handleSendReply = async (options: { subject?: string; body: string }) => {
-    if (!xmtpClient || !selectedConversationId) return;
-    const summary = conversationsById[selectedConversationId];
-    if (!summary) return;
-    await summary.conversation.send(
+    if (!xmtpClient) return;
+    if (!selectedConversation || selectedConversation.kind !== 'xmtp') return;
+    await selectedConversation.conversation.send(
       encodeXmtpEmailV1({
         subject: options.subject ?? '',
         body: options.body,
         from: clientAddress,
-        to: summary.peerAddress ?? summary.peerInboxId ?? selectedConversationId,
+        to: selectedConversation.peerAddress ?? selectedConversation.peerInboxId ?? selectedConversation.id,
       }),
     );
   };
@@ -1005,7 +1101,7 @@ const XMTPWebmailClient: React.FC = () => {
               xmtpInitStalled={xmtpInitStalled}
               clientError={xmtpError ?? undefined}
               clientAddress={clientAddress}
-              conversationsCount={conversationList.length}
+              conversationsCount={xmtpConversationList.length}
             />
           </div>
         </div>
@@ -1035,7 +1131,7 @@ const XMTPWebmailClient: React.FC = () => {
               xmtpInitStalled={xmtpInitStalled}
               clientError={xmtpError ?? undefined}
               clientAddress={clientAddress}
-              conversationsCount={conversationList.length}
+              conversationsCount={xmtpConversationList.length}
             />
           </div>
         </div>
@@ -1066,7 +1162,7 @@ const XMTPWebmailClient: React.FC = () => {
             xmtpInitStalled={xmtpInitStalled}
             clientError={xmtpError ?? undefined}
             clientAddress={clientAddress}
-            conversationsCount={conversationList.length}
+            conversationsCount={xmtpConversationList.length}
           />
         </div>
       </div>
@@ -1095,7 +1191,7 @@ const XMTPWebmailClient: React.FC = () => {
             xmtpInitStalled={xmtpInitStalled}
             clientError={xmtpError ?? undefined}
             clientAddress={clientAddress}
-            conversationsCount={conversationList.length}
+            conversationsCount={xmtpConversationList.length}
           />
         </div>
       </div>
@@ -1136,7 +1232,7 @@ const XMTPWebmailClient: React.FC = () => {
             xmtpInitStalled={xmtpInitStalled}
             clientError={xmtpError ?? undefined}
             clientAddress={clientAddress}
-            conversationsCount={conversationList.length}
+            conversationsCount={xmtpConversationList.length}
           />
         </div>
       </div>
@@ -1144,140 +1240,202 @@ const XMTPWebmailClient: React.FC = () => {
   }
 
   return (
-    <div className="h-dvh bg-[#f6f8fc] text-neutral-900">
-      <div className="flex h-full flex-col">
-        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
-        <header className="border-b bg-[#f6f8fc] px-4 py-3">
+    <div className="min-h-dvh bg-gradient-to-br from-slate-50 via-white to-sky-50 text-neutral-900">
+      <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+      <div className="mx-auto flex h-full max-w-6xl flex-col gap-4 px-4 pb-6 pt-4 lg:px-8">
+        <header className="flex flex-col gap-3 rounded-3xl bg-white/90 px-5 py-4 shadow-xl ring-1 ring-black/5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="h-9 w-9 rounded-full bg-blue-600" />
-              <div className="text-lg font-semibold tracking-tight">xmtp.mx</div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-sm font-bold text-white shadow-md">
+              XM
             </div>
+            <div>
+              <div className="text-lg font-semibold tracking-tight">xmtp.mx Mail</div>
+              <div className="text-xs text-neutral-500">Gmail-inspired inbox for XMTP</div>
+            </div>
+          </div>
 
-            <div className="ml-3 hidden flex-1 sm:block">
+          <div className="flex w-full flex-1 items-center gap-3 sm:w-auto">
+            <div className="hidden flex-1 sm:block">
               <input
-                className="w-full rounded-full border bg-white px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm outline-none shadow-inner transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
                 placeholder="Search conversations"
                 value={search}
                 onChange={(e) => setSearch(e.currentTarget.value)}
               />
             </div>
-
-            <div className="ml-auto">
-              <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} />
+            <div className="flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1 text-[12px] font-semibold text-neutral-700 ring-1 ring-black/5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" /> XMTP {xmtpEnv}
             </div>
+            <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} />
           </div>
         </header>
 
-        <div className="flex flex-1 gap-4 overflow-hidden p-4">
-          <aside className="hidden w-[256px] shrink-0 sm:flex sm:flex-col">
-            <button
-              type="button"
-              className="mb-4 inline-flex items-center justify-center rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
-              onClick={() => setComposeOpen(true)}
-            >
-              Compose
-            </button>
+        <div className="flex flex-1 gap-4 overflow-hidden">
+          <aside className="hidden w-[260px] shrink-0 flex-col gap-3 sm:flex">
+            <div className="rounded-3xl bg-white/90 p-4 shadow-md ring-1 ring-black/5">
+              <button
+                type="button"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:brightness-105"
+                onClick={() => setComposeOpen(true)}
+              >
+                <span className="text-base">✉️</span> Compose
+              </button>
 
-            <nav className="space-y-1">
-              <div className="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-neutral-900 shadow-sm ring-1 ring-black/5">
-                Inbox
+              <div className="mt-4 space-y-1 text-sm font-semibold text-neutral-600">
+                <div className="flex items-center justify-between rounded-2xl px-3 py-2 text-neutral-900 ring-1 ring-transparent transition hover:bg-neutral-50 hover:ring-black/5">
+                  <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-blue-500" /> Inbox</span>
+                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">{conversationList.length}</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-2xl px-3 py-2 text-neutral-500 transition hover:bg-neutral-50"><span className="h-2 w-2 rounded-full bg-neutral-300" /> Sent</div>
+                <div className="flex items-center gap-2 rounded-2xl px-3 py-2 text-neutral-500 transition hover:bg-neutral-50"><span className="h-2 w-2 rounded-full bg-neutral-300" /> Drafts</div>
               </div>
-              <div className="rounded-xl px-3 py-2 text-sm text-neutral-600">Sent</div>
-              <div className="rounded-xl px-3 py-2 text-sm text-neutral-600">Drafts</div>
-            </nav>
+            </div>
+
+            <div className="rounded-3xl bg-white/80 p-4 text-xs text-neutral-600 shadow-sm ring-1 ring-black/5">
+              <div className="font-semibold text-neutral-900">What’s XMTP mail?</div>
+              <p className="mt-1 leading-relaxed">Threads here are encrypted on XMTP and render like email. No servers or IMAP folders — just wallet-linked messaging.</p>
+            </div>
           </aside>
 
-          <div className="flex min-w-0 flex-1 gap-4 overflow-hidden">
-            <section className="w-[360px] shrink-0 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-              <div className="border-b px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold text-neutral-900">Inbox</div>
-                  <button
-                    type="button"
-                    className="rounded-lg px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50 sm:hidden"
-                    onClick={() => setComposeOpen(true)}
-                  >
-                    Compose
-                  </button>
+          <div className="flex min-w-0 flex-1 flex-col gap-3 rounded-3xl bg-white/50 p-3 shadow-inner ring-1 ring-black/5">
+            <div className="flex flex-1 gap-3 overflow-hidden">
+              <section className="w-full max-w-md shrink-0 overflow-hidden rounded-2xl bg-white/90 shadow-md ring-1 ring-black/5">
+                <div className="border-b px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-neutral-900">Inbox</div>
+                      <div className="text-[11px] text-neutral-500">Styled like Gmail, powered by XMTP</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="rounded-full px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100 transition hover:bg-blue-50 sm:hidden"
+                      onClick={() => setComposeOpen(true)}
+                    >
+                      Compose
+                    </button>
+                  </div>
+                  <div className="mt-2 sm:hidden">
+                    <input
+                      className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm outline-none shadow-inner transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                      placeholder="Search"
+                      value={search}
+                      onChange={(e) => setSearch(e.currentTarget.value)}
+                    />
+                  </div>
                 </div>
-                <div className="mt-2 sm:hidden">
-                  <input
-                    className="w-full rounded-full border bg-white px-4 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
-                    placeholder="Search"
-                    value={search}
-                    onChange={(e) => setSearch(e.currentTarget.value)}
-                  />
+                <div className="h-full overflow-y-auto">
+                  {conversationList.length === 0 ? (
+                    <div className="px-4 py-6 text-sm text-neutral-500">No conversations yet.</div>
+                  ) : (
+                    conversationList.map((summary) => {
+                      if (summary.kind === 'welcome') {
+                        const isSelected = selectedConversationId === summary.id;
+                        return (
+                          <button
+                            key={summary.id}
+                            type="button"
+                            className={[
+                              'w-full border-b px-4 py-3 text-left transition',
+                              isSelected ? 'bg-amber-50' : 'hover:bg-amber-50/60',
+                            ].join(' ')}
+                            onClick={() => setSelectedConversationId(summary.id)}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 truncate">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-900 ring-1 ring-amber-200">Hi</span>
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-semibold text-neutral-900">{summary.subject}</div>
+                                  <div className="mt-0.5 flex items-center gap-2 text-[11px] text-amber-800">
+                                    <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold">Welcome</span>
+                                    <span className="truncate">Product tour</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="shrink-0 text-xs text-neutral-500">{formatTimestamp(summary.timestamp)}</div>
+                            </div>
+                            <div className="mt-1 truncate text-xs text-neutral-600">{summary.preview}</div>
+                          </button>
+                        );
+                      }
+
+                      const lastMessage = summary.lastMessage;
+                      const lastMessageDate = lastMessage ? nsToDate(lastMessage.sentAtNs) : undefined;
+                      const label = summary.peerAddress ?? summary.peerInboxId ?? summary.conversation.id;
+                      const decodedLast = lastMessage ? decodeXmtpEmail(lastMessage.content) : null;
+                      const preview = decodedLast
+                        ? decodedLast.kind === 'email'
+                          ? decodedLast.email.subject || '(no subject)'
+                          : decodedLast.text
+                        : 'No messages yet.';
+                      const isSelected = selectedConversationId === summary.id;
+
+                      return (
+                        <button
+                          key={summary.id}
+                          type="button"
+                          className={[
+                            'w-full border-b px-4 py-3 text-left transition',
+                            isSelected ? 'bg-blue-50' : 'hover:bg-neutral-50',
+                          ].join(' ')}
+                          onClick={() => {
+                            setSelectedConversationId(summary.id);
+                            void loadMessagesForConversation(summary.conversation);
+                          }}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 truncate">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-xs font-semibold text-neutral-700 ring-1 ring-black/5">
+                                {label.slice(0, 2).toUpperCase()}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-neutral-900">{label}</div>
+                                <div className="mt-0.5 truncate text-[11px] text-neutral-500">Encrypted thread on XMTP</div>
+                              </div>
+                            </div>
+                            <div className="shrink-0 text-xs text-neutral-500">{formatTimestamp(lastMessageDate)}</div>
+                          </div>
+                          <div className="mt-1 truncate text-xs text-neutral-600">{preview}</div>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
-              </div>
-              <div className="h-full overflow-y-auto">
-                {conversationList.length === 0 ? (
-                  <div className="px-4 py-6 text-sm text-neutral-500">No conversations.</div>
+              </section>
+
+              <section className="min-w-0 flex-1 overflow-hidden">
+                {selectedConversation ? (
+                  selectedConversation.kind === 'welcome' ? (
+                    <WelcomeThread conversation={selectedConversation} />
+                  ) : (
+                    <Thread
+                      conversation={selectedConversation.conversation}
+                      messages={selectedMessages}
+                      selfInboxId={xmtpClient.inboxId}
+                      inboxDetails={inboxDetails}
+                      threadTitle={selectedConversation.peerAddress ?? selectedConversation.peerInboxId ?? shortenInboxId(selectedConversation.id)}
+                      threadSubtitle="Encrypted on XMTP"
+                      onReply={(options) => handleSendReply(options)}
+                    />
+                  )
                 ) : (
-                  conversationList.map((summary) => {
-                    const lastMessage = summary.lastMessage;
-                    const lastMessageDate = lastMessage ? nsToDate(lastMessage.sentAtNs) : undefined;
-                    const label = summary.peerAddress ?? summary.peerInboxId ?? summary.conversation.id;
-                    const decodedLast = lastMessage ? decodeXmtpEmail(lastMessage.content) : null;
-
-                    return (
-                      <button
-                        key={summary.conversation.id}
-                        type="button"
-                        className={[
-                          'w-full border-b px-4 py-3 text-left hover:bg-neutral-50',
-                          selectedConversationId === summary.conversation.id ? 'bg-neutral-50' : '',
-                        ].join(' ')}
-                        onClick={() => {
-                          setSelectedConversationId(summary.conversation.id);
-                          void loadMessagesForConversation(summary.conversation);
-                        }}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="truncate text-sm font-semibold text-neutral-900">{label}</div>
-                          <div className="shrink-0 text-xs text-neutral-500">{formatTimestamp(lastMessageDate)}</div>
-                        </div>
-                        <div className="mt-1 truncate text-xs text-neutral-500">
-                          {decodedLast
-                            ? decodedLast.kind === 'email'
-                              ? decodedLast.email.subject || '(no subject)'
-                              : decodedLast.text
-                            : 'No messages yet.'}
-                        </div>
-                      </button>
-                    );
-                  })
+                  <div className="flex h-full items-center justify-center rounded-2xl bg-white/90 text-sm text-neutral-500 shadow-md ring-1 ring-black/5">
+                    Select a conversation to read messages.
+                  </div>
                 )}
-              </div>
-            </section>
-
-            <section className="min-w-0 flex-1 overflow-hidden">
-              {selectedConversation ? (
-                <Thread
-                  conversation={selectedConversation}
-                  messages={selectedMessages}
-                  selfInboxId={xmtpClient.inboxId}
-                  inboxDetails={inboxDetails}
-                  onReply={(options) => handleSendReply(options)}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-                  <div className="text-sm text-neutral-500">Select a conversation to read messages.</div>
-                </div>
-              )}
-            </section>
+              </section>
+            </div>
           </div>
         </div>
       </div>
 
       {composeOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-4 sm:items-center">
-          <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/5">
-            <div className="flex items-center justify-between border-b px-5 py-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm p-4 sm:items-center">
+          <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
+            <div className="flex items-center justify-between border-b bg-gradient-to-r from-white to-blue-50 px-5 py-4">
               <div className="text-sm font-semibold text-neutral-900">New message</div>
               <button
                 type="button"
-                className="rounded-lg px-2 py-1 text-sm text-neutral-600 hover:bg-neutral-100"
+                className="rounded-lg px-2 py-1 text-sm text-neutral-600 transition hover:bg-neutral-100"
                 onClick={() => {
                   setComposeOpen(false);
                   setComposeError(null);
@@ -1321,10 +1479,10 @@ const XMTPWebmailClient: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t px-5 py-4">
+            <div className="flex items-center justify-end gap-2 border-t bg-neutral-50 px-5 py-4">
               <button
                 type="button"
-                className="rounded-xl px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-100"
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100"
                 onClick={() => setComposeOpen(false)}
                 disabled={composeIsSending}
               >
@@ -1332,7 +1490,7 @@ const XMTPWebmailClient: React.FC = () => {
               </button>
               <button
                 type="button"
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
                 onClick={() => void handleComposeSend()}
                 disabled={composeIsSending || !composeTo.trim()}
               >
