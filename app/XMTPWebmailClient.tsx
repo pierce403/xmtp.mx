@@ -594,6 +594,18 @@ const XMTPWebmailClient: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    console.log(`[xmtp.mx] compose modal ${composeOpen ? 'open' : 'close'}`, { demoMode });
+  }, [composeOpen, demoMode]);
+
+  useEffect(() => {
+    if (!demoMode) return;
+    console.log(
+      `[xmtp.mx] demo thread modal ${demoSelectedId ? 'open' : 'close'}`,
+      demoSelectedId ? { id: demoSelectedId } : undefined,
+    );
+  }, [demoMode, demoSelectedId]);
+
   const clampDemoModalRect = useCallback(
     (rect: DemoModalRect, size: { width: number; height: number }, options?: { resetIfZero?: boolean }) => {
       const margin = 12;
