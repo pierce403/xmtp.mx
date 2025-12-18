@@ -1169,10 +1169,10 @@ const XMTPWebmailClient: React.FC = () => {
     const lastSyncTime = new Date(Date.now() - 1000 * 60 * 2); // 2 mins ago for demo
 
     return (
-      <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]" style={{ background: 'var(--gradient-page)' }}>
-        <div className="mx-auto flex h-dvh max-w-7xl flex-col gap-4 px-4 pb-4 pt-4 lg:px-6">
+      <div className="min-h-dvh" style={{ background: 'var(--background)' }}>
+        <div className="mx-auto flex h-dvh max-w-6xl flex-col gap-3 p-3">
           {/* Header */}
-          <header className="card-shiny flex items-center justify-between px-4 py-3 backdrop-blur-md" style={{ background: 'var(--header-bg)', borderRadius: 'var(--radius-xl)' }}>
+          <header className="flex items-center justify-between px-4" style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', height: 'var(--header-height)', border: '1px solid var(--border)' }}>
             {/* Left: Logo + Title */}
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl text-base" style={{ background: 'var(--gradient-accent)' }}>
@@ -1229,16 +1229,24 @@ const XMTPWebmailClient: React.FC = () => {
           </header>
 
           {/* Main Content */}
-          <div className="flex flex-1 gap-4 overflow-hidden">
+          <div className="flex flex-1 gap-3 overflow-hidden">
             {/* Sidebar */}
-            <aside className="flex w-[180px] shrink-0 flex-col gap-3">
-              <div className="card-shiny p-2 backdrop-blur-md" style={{ background: 'var(--sidebar-bg)', borderRadius: 'var(--radius-xl)' }}>
+            <aside className="flex w-[160px] shrink-0 flex-col">
+              <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', padding: 'var(--space-2)' }}>
                 <nav className="flex flex-col gap-1">
                   {/* Compose */}
                   <button
                     type="button"
-                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition"
-                    style={{ background: 'var(--primary)', color: 'white' }}
+                    className="flex items-center gap-2 transition"
+                    style={{
+                      background: 'var(--primary)',
+                      color: 'white',
+                      height: 'var(--button-height)',
+                      padding: '0 var(--space-3)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 'var(--text-base)',
+                      fontWeight: 500
+                    }}
                     onClick={() => setComposeOpen(true)}
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1249,8 +1257,13 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Inbox */}
                   <button
                     onClick={() => setDemoView('inbox')}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition"
+                    className="flex items-center gap-2 transition"
                     style={{
+                      height: 'var(--button-height)',
+                      padding: '0 var(--space-3)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 'var(--text-base)',
+                      fontWeight: 500,
                       color: demoView === 'inbox' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'inbox' ? 'var(--primary-subtle)' : 'transparent'
                     }}
@@ -1260,13 +1273,18 @@ const XMTPWebmailClient: React.FC = () => {
                       <path d="M22 6l-10 7L2 6" />
                     </svg>
                     Inbox
-                    <span className="ml-auto text-xs opacity-60">{DEMO_CONVERSATIONS.length + 1}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 'var(--text-xs)', opacity: 0.6 }}>{DEMO_CONVERSATIONS.length + 1}</span>
                   </button>
                   {/* Sent */}
                   <button
                     onClick={() => setDemoView('sent')}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition"
+                    className="flex items-center gap-2 transition"
                     style={{
+                      height: 'var(--button-height)',
+                      padding: '0 var(--space-3)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 'var(--text-base)',
+                      fontWeight: 500,
                       color: demoView === 'sent' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'sent' ? 'var(--primary-subtle)' : 'transparent'
                     }}
@@ -1279,8 +1297,13 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Contacts */}
                   <button
                     onClick={() => setDemoView('contacts')}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition"
+                    className="flex items-center gap-2 transition"
                     style={{
+                      height: 'var(--button-height)',
+                      padding: '0 var(--space-3)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 'var(--text-base)',
+                      fontWeight: 500,
                       color: demoView === 'contacts' ? 'var(--foreground)' : 'var(--foreground-muted)',
                       background: demoView === 'contacts' ? 'var(--primary-subtle)' : 'transparent'
                     }}
@@ -1294,8 +1317,8 @@ const XMTPWebmailClient: React.FC = () => {
               </div>
             </aside>
 
-            {/* Mail List and Thread / Contacts / Sent */}
-            <div className="card-shiny flex min-w-0 flex-1 overflow-hidden" style={{ background: 'var(--surface-glass)', borderRadius: 'var(--radius-2xl)' }}>
+            {/* Mail List */}
+            <div className="flex min-w-0 flex-1 overflow-hidden" style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
               {demoView === 'contacts' ? (
                 /* Contacts View */
                 <div className="flex-1 overflow-y-auto p-6">

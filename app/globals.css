@@ -109,14 +109,37 @@
   --transition-normal: 200ms;
   --transition-slow: 300ms;
 
-  /* ===== Border Radius ===== */
-  --radius-sm: 0.375rem;
-  --radius: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
-  --radius-2xl: 2rem;
+  /* ===== Border Radius (Simplified) ===== */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
   --radius-full: 9999px;
+
+  /* ===== Spacing Scale ===== */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* ===== Typography Scale ===== */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+
+  /* ===== Component Sizes ===== */
+  --avatar-sm: 28px;
+  --avatar-md: 32px;
+  --avatar-lg: 40px;
+  --row-height: 48px;
+  --header-height: 56px;
+  --button-height: 36px;
 }
 
 /* ========================================
