@@ -641,20 +641,27 @@ const XMTPWebmailClient: React.FC = () => {
   }, [demoModalRect]);
 
   useEffect(() => {
+    if (!demoMode) return;
     const node = demoMailListRef.current;
     if (!node || typeof ResizeObserver === 'undefined') return;
+
+    const updateSize = (width: number, height: number) => {
+      const size = { width: Math.max(0, Math.floor(width)), height: Math.max(0, Math.floor(height)) };
+      demoMailListSizeRef.current = size;
+      setDemoMailListSize(size);
+    };
+
+    const rect = node.getBoundingClientRect();
+    updateSize(rect.width, rect.height);
+
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
-      const width = Math.max(0, Math.floor(entry.contentRect.width));
-      const height = Math.max(0, Math.floor(entry.contentRect.height));
-      const size = { width, height };
-      demoMailListSizeRef.current = size;
-      setDemoMailListSize(size);
+      updateSize(entry.contentRect.width, entry.contentRect.height);
     });
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+  }, [demoMode]);
 
   useEffect(() => {
     if (!demoMailListSize.width || !demoMailListSize.height) return;

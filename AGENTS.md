@@ -101,6 +101,7 @@ npm run preview
 - Wins: `npm audit` clean after overriding `@babel/helpers` to `7.28.4` and `brace-expansion` to `1.1.12` for `minimatch@3.1.2`.
 - Wins: Demo modals are draggable/resizable with a 2/3-width minimum anchored to the message list (`app/XMTPWebmailClient.tsx`).
 - Wins: Added console logs for demo modal open/close events to speed up UI debugging (`app/XMTPWebmailClient.tsx`).
+- Wins: Demo modal sizing now initializes after `?demo` activates by observing the message list container with `ResizeObserver` (`app/XMTPWebmailClient.tsx`).
 - Misses: Next’s lockfile detection can pick up a `bun.lock` in a parent dir (e.g. `/home/pierce/bun.lock`) and warn “Found multiple lockfiles”; remove/rename the parent lockfile (or build from a clean path) to avoid confusion.
 - Misses: TypeScript can error on duplicate keys when spreading an object that includes `kind`/`id` into an object literal that also sets them; strip `kind` + `id` before spreading (see `app/XMTPWebmailClient.tsx` upsert helper).
 - Misses: WalletConnect can log `Error: emitting session_request:<id> without any listeners` (from `@walletconnect/sign-client`) during thirdweb auto-connect; disable `autoConnect` on `ConnectButton` to stop the noisy auto-connect path.
