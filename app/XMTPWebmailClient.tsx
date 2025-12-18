@@ -1,16 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Client,
-  ConsentState,
-  ConversationType,
-  DecodedMessage,
-  Dm,
-  Identifier,
-  IdentifierKind,
-  SortDirection,
-} from '@xmtp/browser-sdk';
+import { Client, ConsentState, ConversationType, DecodedMessage, Dm, SortDirection } from '@xmtp/browser-sdk';
+import type { Identifier, IdentifierKind } from '@xmtp/browser-sdk';
 import { ethers } from 'ethers';
 import { useActiveAccount, useActiveWallet, ConnectButton } from 'thirdweb/react';
 import { EIP1193 } from 'thirdweb/wallets';
@@ -32,6 +24,8 @@ type ConversationSummary = {
   lastMessage?: DecodedMessage;
 };
 
+const ETHEREUM_IDENTIFIER_KIND: IdentifierKind = 'Ethereum';
+
 function toneDotClass(tone: StartupStatusTone) {
   switch (tone) {
     case 'ok':
@@ -52,8 +46,17 @@ function nsToDate(ns?: bigint) {
 
 function findEthereumAddress(identifiers: Identifier[] | undefined) {
   if (!identifiers) return undefined;
-  const eth = identifiers.find((id) => id.identifierKind === IdentifierKind.Ethereum);
+  const eth = identifiers.find((id) => id.identifierKind === ETHEREUM_IDENTIFIER_KIND);
   return eth?.identifier;
+}
+
+function extractIdentifiers(
+  state?: { identifiers?: Identifier[] } | { accountIdentifiers?: Identifier[] },
+): Identifier[] | undefined {
+  if (!state) return undefined;
+  if ('identifiers' in state && state.identifiers) return state.identifiers;
+  if ('accountIdentifiers' in state) return state.accountIdentifiers;
+  return undefined;
 }
 
 function shortenInboxId(inboxId: string) {
@@ -452,7 +455,7 @@ const XMTPWebmailClient: React.FC = () => {
   const hasActiveWallet = Boolean(activeWallet);
   const clientAddress = useMemo(() => {
     const identifier = xmtpClient?.accountIdentifier;
-    if (identifier?.identifierKind === IdentifierKind.Ethereum) return identifier.identifier;
+    if (identifier?.identifierKind === ETHEREUM_IDENTIFIER_KIND) return identifier.identifier;
     return undefined;
   }, [xmtpClient]);
 
@@ -596,12 +599,13 @@ const XMTPWebmailClient: React.FC = () => {
       try {
         const states = await Client.inboxStateFromInboxIds([inboxId], xmtpEnv);
         const state = states?.[0];
-        const address = findEthereumAddress(state?.identifiers ?? state?.accountIdentifiers);
+        const identifiers = extractIdentifiers(state);
+        const address = findEthereumAddress(identifiers);
         setInboxDetails((prev) => ({
           ...prev,
           [inboxId]: {
             address,
-            identifiers: (state as { identifiers?: Identifier[] })?.identifiers ?? (state as { accountIdentifiers?: Identifier[] })?.accountIdentifiers,
+            identifiers,
           },
         }));
         return address;
@@ -695,7 +699,7 @@ const XMTPWebmailClient: React.FC = () => {
     async (conversation: Dm) => {
       try {
         const messages = await conversation.messages({
-          direction: SortDirection.SORT_DIRECTION_ASCENDING,
+          direction: SortDirection.Ascending,
         });
         addMessages(conversation.id, messages);
         const last = messages.at(-1);
@@ -755,7 +759,7 @@ const XMTPWebmailClient: React.FC = () => {
 
       const xmtpSigner = {
         type: 'EOA' as const,
-        getIdentifier: () => ({ identifier: address, identifierKind: IdentifierKind.Ethereum }),
+        getIdentifier: () => ({ identifier: address, identifierKind: ETHEREUM_IDENTIFIER_KIND }),
         signMessage: async (message: string) => {
           const signature = await signer.signMessage(message);
           return ethers.getBytes(signature);
@@ -960,7 +964,7 @@ const XMTPWebmailClient: React.FC = () => {
 
       const dm = await xmtpClient.conversations.newDmWithIdentifier({
         identifier: peerAddress,
-        identifierKind: IdentifierKind.Ethereum,
+        identifierKind: ETHEREUM_IDENTIFIER_KIND,
       });
       await dm.send(payload);
       const peerInfo = await loadConversationPeers(dm);
@@ -1214,6 +1218,7 @@ const XMTPWebmailClient: React.FC = () => {
                     const lastMessage = summary.lastMessage;
                     const lastMessageDate = lastMessage ? nsToDate(lastMessage.sentAtNs) : undefined;
                     const label = summary.peerAddress ?? summary.peerInboxId ?? summary.conversation.id;
+                    const decodedLast = lastMessage ? decodeXmtpEmail(lastMessage.content) : null;
 
                     return (
                       <button
@@ -1233,9 +1238,10 @@ const XMTPWebmailClient: React.FC = () => {
                           <div className="shrink-0 text-xs text-neutral-500">{formatTimestamp(lastMessageDate)}</div>
                         </div>
                         <div className="mt-1 truncate text-xs text-neutral-500">
-                          {lastMessage ? decodeXmtpEmail(lastMessage.content).kind === 'email'
-                            ? decodeXmtpEmail(lastMessage.content).email.subject || '(no subject)'
-                            : decodeXmtpEmail(lastMessage.content).text
+                          {decodedLast
+                            ? decodedLast.kind === 'email'
+                              ? decodedLast.email.subject || '(no subject)'
+                              : decodedLast.text
                             : 'No messages yet.'}
                         </div>
                       </button>
