@@ -503,8 +503,8 @@ body {
   .btn-nav {
     background: var(--surface-glass);
     color: var(--foreground-muted);
-    border-radius: var(--radius-lg);
-    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-md);
+    padding: 0.375rem 0.625rem;
     font-weight: 500;
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
@@ -536,14 +536,19 @@ body {
     transform: translateX(100%);
   }
 
-  .btn-nav.active {
+  .btn-nav[data-active="true"] {
     background: var(--gradient-accent);
     color: white;
     border-color: transparent;
     box-shadow: var(--shadow-md), var(--shadow-glow-sm);
   }
 
-  .btn-nav.active::before {
+  .btn-nav[data-active="true"]:hover {
+    transform: translateX(0);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+  }
+
+  .btn-nav[data-active="true"]::before {
     opacity: 0;
   }
 

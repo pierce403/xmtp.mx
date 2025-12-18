@@ -1250,14 +1250,14 @@ const XMTPWebmailClient: React.FC = () => {
                     type="button"
                     className="btn-primary flex items-center justify-center gap-1.5"
                     style={{
-                      height: '36px',
-                      borderRadius: '10px',
+                      height: '34px',
+                      borderRadius: '8px',
                       fontSize: '13px',
                       fontWeight: 600
                     }}
                     onClick={() => setComposeOpen(true)}
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path d="M12 4v16m8-8H4" />
                     </svg>
                     Compose
@@ -1268,23 +1268,25 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Inbox */}
                   <button
                     onClick={() => setDemoView('inbox')}
-                    className={`btn-nav flex items-center gap-2 ${demoView === 'inbox' ? 'active' : ''}`}
-                    style={{ height: '34px', fontSize: '13px' }}
+                    className="btn-nav flex items-center gap-2"
+                    data-active={demoView === 'inbox' ? 'true' : undefined}
+                    style={{ height: '32px', fontSize: '13px' }}
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2z" />
                       <path d="M22 6l-10 7L2 6" />
                     </svg>
                     Inbox
-                    <span className="ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: demoView === 'inbox' ? 'rgba(255,255,255,0.25)' : 'var(--gradient-accent)', color: 'white' }}>{DEMO_CONVERSATIONS.length + 1}</span>
+                    <span className="ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: demoView === 'inbox' ? 'rgba(255,255,255,0.25)' : 'var(--primary)', color: 'white' }}>{DEMO_CONVERSATIONS.length + 1}</span>
                   </button>
                   {/* Sent */}
                   <button
                     onClick={() => setDemoView('sent')}
-                    className={`btn-nav flex items-center gap-2 ${demoView === 'sent' ? 'active' : ''}`}
-                    style={{ height: '34px', fontSize: '13px' }}
+                    className="btn-nav flex items-center gap-2"
+                    data-active={demoView === 'sent' ? 'true' : undefined}
+                    style={{ height: '32px', fontSize: '13px' }}
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                     Sent
@@ -1292,10 +1294,11 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Contacts */}
                   <button
                     onClick={() => setDemoView('contacts')}
-                    className={`btn-nav flex items-center gap-2 ${demoView === 'contacts' ? 'active' : ''}`}
-                    style={{ height: '34px', fontSize: '13px' }}
+                    className="btn-nav flex items-center gap-2"
+                    data-active={demoView === 'contacts' ? 'true' : undefined}
+                    style={{ height: '32px', fontSize: '13px' }}
                   >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     Contacts
