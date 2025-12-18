@@ -98,6 +98,7 @@ npm run preview
 - Wins: Merge conflict on `origin/copilot/sub-pr-10` resolved, verified via `npm run build`, then fast-forwarded into `main`.
 - Wins: Demo modals are now anchored to the message list container (`app/XMTPWebmailClient.tsx`) with `absolute inset-2` and demo loads without auto-opening the welcome thread.
 - Wins: Dependabot high fixed by overriding `viem` to `2.43.1` (see `package.json`), then `npm install` to update the lockfile.
+- Wins: `npm audit` clean after overriding `@babel/helpers` to `7.28.4` and `brace-expansion` to `1.1.12` for `minimatch@3.1.2`.
 - Misses: Next’s lockfile detection can pick up a `bun.lock` in a parent dir (e.g. `/home/pierce/bun.lock`) and warn “Found multiple lockfiles”; remove/rename the parent lockfile (or build from a clean path) to avoid confusion.
 - Misses: TypeScript can error on duplicate keys when spreading an object that includes `kind`/`id` into an object literal that also sets them; strip `kind` + `id` before spreading (see `app/XMTPWebmailClient.tsx` upsert helper).
 - Misses: WalletConnect can log `Error: emitting session_request:<id> without any listeners` (from `@walletconnect/sign-client`) during thirdweb auto-connect; disable `autoConnect` on `ConnectButton` to stop the noisy auto-connect path.
