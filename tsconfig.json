@@ -26,12 +26,12 @@
         "./*"
       ]
     },
-    "target": "ES2017",
     "types": [
       "node",
       "react",
       "react-dom"
-    ]
+    ],
+    "target": "ES2020"
   },
   "include": [
     "next-env.d.ts",
