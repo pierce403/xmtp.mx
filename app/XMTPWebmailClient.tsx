@@ -10,6 +10,7 @@ import { ethereum } from 'thirdweb/chains';
 import { THIRDWEB_CLIENT_ID, thirdwebAppMetadata, thirdwebClient } from '@/lib/thirdwebClient';
 import { decodeXmtpEmail, encodeXmtpEmailV1 } from '@/lib/xmtpEmail';
 import { isHexAddress, parseRecipient, shortenAddress } from '@/lib/xmtpAddressing';
+import { ThemeToggle } from './ThemeContext';
 
 type ThirdwebClientIdStatus = 'missing' | 'checking' | 'valid' | 'invalid';
 
@@ -350,15 +351,15 @@ function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply, th
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-3xl bg-white/90 shadow-xl ring-1 ring-black/5">
-      <div className="border-b bg-gradient-to-r from-white to-blue-50/70 px-6 py-5">
-        <div className="text-lg font-semibold text-neutral-900">{threadTitle ?? shortenInboxId(conversation.id)}</div>
-        <div className="text-xs text-neutral-600">{threadSubtitle ?? 'XMTP thread'}</div>
+    <div className="flex h-full flex-col overflow-hidden rounded-3xl backdrop-blur-md" style={{ background: 'var(--card-bg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-subtle)' }}>
+      <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+        <div className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>{threadTitle ?? shortenInboxId(conversation.id)}</div>
+        <div className="text-xs" style={{ color: 'var(--foreground-muted)' }}>{threadSubtitle ?? 'XMTP thread'}</div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
         {messages.length === 0 ? (
-          <div className="text-sm text-neutral-500">No messages yet.</div>
+          <div className="text-sm" style={{ color: 'var(--foreground-muted)' }}>No messages yet.</div>
         ) : (
           <div className="space-y-3">
             {messages.map((message) => {
@@ -369,25 +370,27 @@ function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply, th
               return (
                 <div key={message.id} className={['flex', isSelf ? 'justify-end' : 'justify-start'].join(' ')}>
                   <div
-                    className={[
-                      'max-w-[720px] rounded-2xl border px-4 py-3 shadow-sm backdrop-blur',
-                      isSelf ? 'border-blue-200 bg-blue-50/80' : 'border-neutral-200 bg-white/90',
-                    ].join(' ')}
+                    className="max-w-[720px] rounded-2xl px-4 py-3 backdrop-blur"
+                    style={{
+                      background: isSelf ? 'var(--primary-subtle)' : 'var(--surface)',
+                      border: isSelf ? '1px solid var(--primary)' : '1px solid var(--border)',
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
                   >
-                    <div className="mb-2 flex items-center justify-between gap-4 text-xs text-neutral-500">
+                    <div className="mb-2 flex items-center justify-between gap-4 text-xs" style={{ color: 'var(--foreground-muted)' }}>
                       <div className="truncate">{isSelf ? 'You' : senderLabel(message.senderInboxId)}</div>
                       <div className="shrink-0">{formatTimestamp(sentAt)}</div>
                     </div>
 
                     {decoded.kind === 'email' ? (
                       <div className="space-y-2">
-                        <div className="text-sm font-semibold text-neutral-900">
+                        <div className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>
                           {decoded.email.subject || '(no subject)'}
                         </div>
-                        <div className="whitespace-pre-wrap text-sm text-neutral-900">{decoded.email.body}</div>
+                        <div className="whitespace-pre-wrap text-sm" style={{ color: 'var(--foreground)' }}>{decoded.email.body}</div>
                       </div>
                     ) : (
-                      <div className="whitespace-pre-wrap text-sm text-neutral-900">{decoded.text}</div>
+                      <div className="whitespace-pre-wrap text-sm" style={{ color: 'var(--foreground)' }}>{decoded.text}</div>
                     )}
                   </div>
                 </div>
@@ -398,18 +401,20 @@ function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply, th
         )}
       </div>
 
-      <div className="border-t bg-neutral-50/80 px-6 py-4">
-        {sendError ? <div className="mb-2 text-xs text-red-600">{sendError}</div> : null}
+      <div className="px-6 py-4" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
+        {sendError ? <div className="mb-2 text-xs" style={{ color: 'var(--accent-error)' }}>{sendError}</div> : null}
         <div className="flex gap-2">
           <textarea
-            className="min-h-[44px] flex-1 resize-none rounded-2xl border border-neutral-200 bg-white px-3 py-2 text-sm outline-none shadow-inner focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+            className="min-h-[44px] flex-1 resize-none rounded-2xl px-3 py-2 text-sm outline-none transition"
+            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--foreground)', boxShadow: 'var(--shadow-inner)' }}
             placeholder="Reply…"
             value={replyBody}
             onChange={(e) => setReplyBody(e.currentTarget.value)}
           />
           <button
             type="button"
-            className="h-[44px] shrink-0 rounded-2xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+            className="h-[44px] shrink-0 rounded-2xl px-4 text-sm font-semibold text-white shadow-sm transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+            style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-md)' }}
             onClick={() => void handleSendReply()}
             disabled={!replyBody.trim() || isSending}
           >
@@ -425,28 +430,28 @@ function WelcomeThread({ conversation }: { conversation: WelcomeConversationSumm
   const paragraphs = useMemo(() => conversation.body.split('\n\n'), [conversation.body]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-3xl bg-white/90 shadow-xl ring-1 ring-black/5">
-      <div className="border-b bg-gradient-to-r from-white to-amber-50/70 px-6 py-5">
-        <div className="text-lg font-semibold text-neutral-900">{conversation.subject}</div>
-        <div className="text-xs text-neutral-600">From XMTP Mailroom • {formatTimestamp(conversation.timestamp)}</div>
+    <div className="flex h-full flex-col overflow-hidden rounded-3xl backdrop-blur-md" style={{ background: 'var(--card-bg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-subtle)' }}>
+      <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+        <div className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>{conversation.subject}</div>
+        <div className="text-xs" style={{ color: 'var(--foreground-muted)' }}>From XMTP Mailroom • {formatTimestamp(conversation.timestamp)}</div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">
-          <span className="h-2 w-2 rounded-full bg-amber-500" />
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: 'var(--welcome-bg)', color: 'var(--welcome-fg)', border: '1px solid var(--welcome-border)' }}>
+          <span className="h-2 w-2 rounded-full" style={{ background: 'var(--welcome-accent)' }} />
           Local welcome email (for your eyes only)
         </div>
 
-        <div className="space-y-4 text-sm text-neutral-800">
+        <div className="space-y-4 text-sm" style={{ color: 'var(--foreground)' }}>
           {paragraphs.map((para, idx) => (
             <p key={idx} className="leading-relaxed">
               {para}
             </p>
           ))}
 
-          <div className="rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-blue-900 shadow-sm">
-            <div className="text-sm font-semibold">Quick start</div>
-            <ul className="mt-2 list-disc space-y-1 pl-4 text-[13px]">
+          <div className="rounded-2xl px-4 py-3" style={{ background: 'var(--primary-subtle)', border: '1px solid var(--primary)', boxShadow: 'var(--shadow-sm)' }}>
+            <div className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Quick start</div>
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-[13px]" style={{ color: 'var(--foreground-muted)' }}>
               <li>Connect your wallet with the button above. We’ll show your XMTP inbox instantly.</li>
               <li>Hit Compose to message an ENS name or 0x address. We style threads like email, but they stay on XMTP.</li>
               <li>Replies are encrypted end-to-end. There’s no central mail server in the middle.</li>
@@ -685,11 +690,11 @@ const XMTPWebmailClient: React.FC = () => {
       const existing = prev[id];
       const restExisting = existing
         ? (() => {
-            const clone = { ...existing } as Partial<XmtpConversationSummary>;
-            delete clone.kind;
-            delete clone.id;
-            return clone;
-          })()
+          const clone = { ...existing } as Partial<XmtpConversationSummary>;
+          delete clone.kind;
+          delete clone.id;
+          return clone;
+        })()
         : {};
       return {
         ...prev,
@@ -942,8 +947,8 @@ const XMTPWebmailClient: React.FC = () => {
   useEffect(() => {
     const timer = xmtpLoading
       ? setTimeout(() => {
-      setXmtpInitStalled(true);
-    }, 10_000)
+        setXmtpInitStalled(true);
+      }, 10_000)
       : undefined;
     return () => {
       if (timer) clearTimeout(timer);
@@ -1089,12 +1094,13 @@ const XMTPWebmailClient: React.FC = () => {
 
   if (wasmError) {
     return (
-      <div className="min-h-dvh bg-[#f6f8fc] text-neutral-900">
+      <div className="min-h-dvh" style={{ background: 'var(--gradient-page)', color: 'var(--foreground)' }}>
         <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+        <div className="absolute right-4 top-4"><ThemeToggle /></div>
         <div className="flex h-dvh items-center justify-center px-6">
           <div className="max-w-lg text-center">
-            <div className="text-xl font-semibold">Failed to initialize</div>
-            <div className="mt-2 text-sm text-neutral-600">WebAssembly error: {wasmError}</div>
+            <div className="text-xl font-semibold" style={{ color: 'var(--foreground)' }}>Failed to initialize</div>
+            <div className="mt-2 text-sm" style={{ color: 'var(--foreground-muted)' }}>WebAssembly error: {wasmError}</div>
             <StartupStatusPanel
               xmtpEnv={xmtpEnv}
               thirdwebClient={Boolean(thirdwebClient)}
@@ -1119,12 +1125,13 @@ const XMTPWebmailClient: React.FC = () => {
 
   if (!isWasmInitialized) {
     return (
-      <div className="min-h-dvh bg-[#f6f8fc] text-neutral-900">
+      <div className="min-h-dvh" style={{ background: 'var(--gradient-page)', color: 'var(--foreground)' }}>
         <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+        <div className="absolute right-4 top-4"><ThemeToggle /></div>
         <div className="flex h-dvh items-center justify-center px-6 text-center">
           <div>
-            <div className="text-xl font-semibold">xmtp.mx</div>
-            <div className="mt-2 text-sm text-neutral-600">Initializing security module…</div>
+            <div className="text-xl font-semibold" style={{ color: 'var(--foreground)' }}>xmtp.mx</div>
+            <div className="mt-2 text-sm" style={{ color: 'var(--foreground-muted)' }}>Initializing security module…</div>
             <StartupStatusPanel
               xmtpEnv={xmtpEnv}
               thirdwebClient={Boolean(thirdwebClient)}
@@ -1149,11 +1156,12 @@ const XMTPWebmailClient: React.FC = () => {
 
   if (!thirdwebClient) {
     return (
-      <div className="min-h-dvh bg-[#f6f8fc] text-neutral-900">
+      <div className="min-h-dvh" style={{ background: 'var(--gradient-page)', color: 'var(--foreground)' }}>
         <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+        <div className="absolute right-4 top-4"><ThemeToggle /></div>
         <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
-          <h1 className="text-2xl font-bold">xmtp.mx</h1>
-          <p className="max-w-md text-sm text-neutral-600">
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>xmtp.mx</h1>
+          <p className="max-w-md text-sm" style={{ color: 'var(--foreground-muted)' }}>
             Wallet connect is disabled because the thirdweb client ID is missing.
           </p>
           <StartupStatusPanel
@@ -1179,12 +1187,13 @@ const XMTPWebmailClient: React.FC = () => {
 
   if (!activeAccount) {
     return (
-      <div className="min-h-dvh bg-[#f6f8fc] text-neutral-900">
+      <div className="min-h-dvh" style={{ background: 'var(--gradient-page)', color: 'var(--foreground)' }}>
         <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+        <div className="absolute right-4 top-4"><ThemeToggle /></div>
         <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
-          <h1 className="text-2xl font-bold">xmtp.mx</h1>
-	          <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} autoConnect={false} />
-          {xmtpError && <p className="text-sm text-red-600">{xmtpError}</p>}
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>xmtp.mx</h1>
+          <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} autoConnect={false} />
+          {xmtpError && <p className="text-sm" style={{ color: 'var(--accent-error)' }}>{xmtpError}</p>}
           <StartupStatusPanel
             xmtpEnv={xmtpEnv}
             thirdwebClient={Boolean(thirdwebClient)}
@@ -1208,18 +1217,20 @@ const XMTPWebmailClient: React.FC = () => {
 
   if (!xmtpClient) {
     return (
-      <div className="min-h-dvh bg-[#f6f8fc] text-neutral-900">
+      <div className="min-h-dvh" style={{ background: 'var(--gradient-page)', color: 'var(--foreground)' }}>
         <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
+        <div className="absolute right-4 top-4"><ThemeToggle /></div>
         <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
-          <h1 className="text-2xl font-bold">xmtp.mx</h1>
-          <p className="text-sm text-neutral-600">
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>xmtp.mx</h1>
+          <p className="text-sm" style={{ color: 'var(--foreground-muted)' }}>
             {!activeWallet ? 'Waiting for wallet provider…' : xmtpLoading ? 'Initializing XMTP…' : xmtpError ? 'XMTP failed.' : 'Initializing XMTP…'}
           </p>
-          {xmtpError ? <p className="max-w-md text-sm text-red-600">{xmtpError}</p> : null}
+          {xmtpError ? <p className="max-w-md text-sm" style={{ color: 'var(--accent-error)' }}>{xmtpError}</p> : null}
           {xmtpError ? (
             <button
               type="button"
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+              style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-md)' }}
               onClick={() => void initializeXmtpClient()}
               disabled={!activeWallet || !isWasmInitialized || xmtpLoading}
             >
@@ -1247,76 +1258,94 @@ const XMTPWebmailClient: React.FC = () => {
     );
   }
 
+
   return (
-    <div className="min-h-dvh bg-gradient-to-br from-slate-50 via-white to-sky-50 text-neutral-900">
+    <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]" style={{ background: 'var(--gradient-page)' }}>
       <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
       <div className="mx-auto flex h-full max-w-6xl flex-col gap-4 px-4 pb-6 pt-4 lg:px-8">
-        <header className="flex flex-col gap-3 rounded-3xl bg-white/90 px-5 py-4 shadow-xl ring-1 ring-black/5 sm:flex-row sm:items-center sm:justify-between">
+        <header className="flex flex-col gap-3 rounded-3xl px-5 py-4 shadow-xl sm:flex-row sm:items-center sm:justify-between backdrop-blur-md" style={{ background: 'var(--header-bg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-subtle)' }}>
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-sm font-bold text-white shadow-md">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white shadow-md" style={{ background: 'var(--gradient-accent)' }}>
               XM
             </div>
             <div>
-              <div className="text-lg font-semibold tracking-tight">xmtp.mx Mail</div>
-              <div className="text-xs text-neutral-500">Gmail-inspired inbox for XMTP</div>
+              <div className="text-lg font-semibold tracking-tight" style={{ color: 'var(--foreground)' }}>xmtp.mx Mail</div>
+              <div className="text-xs" style={{ color: 'var(--foreground-muted)' }}>Gmail-inspired inbox for XMTP</div>
             </div>
           </div>
 
           <div className="flex w-full flex-1 items-center gap-3 sm:w-auto">
             <div className="hidden flex-1 sm:block">
               <input
-                className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm outline-none shadow-inner transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                className="w-full rounded-full px-4 py-2 text-sm outline-none transition"
+                style={{
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--input-border)',
+                  color: 'var(--foreground)',
+                  boxShadow: 'var(--shadow-inner)'
+                }}
                 placeholder="Search conversations"
                 value={search}
                 onChange={(e) => setSearch(e.currentTarget.value)}
+                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--border-focus)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'var(--input-border)'}
               />
             </div>
-            <div className="flex items-center gap-2 rounded-full bg-neutral-100 px-3 py-1 text-[12px] font-semibold text-neutral-700 ring-1 ring-black/5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" /> XMTP {xmtpEnv}
+            <div className="flex items-center gap-2 rounded-full px-3 py-1 text-[12px] font-semibold" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border-subtle)' }}>
+              <span className="h-2 w-2 rounded-full" style={{ background: 'var(--status-online)' }} /> XMTP {xmtpEnv}
             </div>
-	            <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} autoConnect={false} />
+            <ThemeToggle />
+            <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} autoConnect={false} />
           </div>
         </header>
 
+
         <div className="flex flex-1 gap-4 overflow-hidden">
           <aside className="hidden w-[260px] shrink-0 flex-col gap-3 sm:flex">
-            <div className="rounded-3xl bg-white/90 p-4 shadow-md ring-1 ring-black/5">
+            <div className="rounded-3xl p-4 backdrop-blur-md" style={{ background: 'var(--sidebar-bg)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-subtle)' }}>
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:brightness-105"
+                className="flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
+                style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-lg)' }}
                 onClick={() => setComposeOpen(true)}
               >
                 <span className="text-base">✉️</span> Compose
               </button>
 
-              <div className="mt-4 space-y-1 text-sm font-semibold text-neutral-600">
-                <div className="flex items-center justify-between rounded-2xl px-3 py-2 text-neutral-900 ring-1 ring-transparent transition hover:bg-neutral-50 hover:ring-black/5">
-                  <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-blue-500" /> Inbox</span>
-                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">{conversationList.length}</span>
+              <div className="mt-4 space-y-1 text-sm font-semibold">
+                <div className="flex items-center justify-between rounded-2xl px-3 py-2 transition cursor-pointer hover:scale-[1.01]" style={{ color: 'var(--foreground)', background: 'var(--primary-subtle)' }}>
+                  <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: 'var(--primary)' }} /> Inbox</span>
+                  <span className="rounded-full px-2 py-0.5 text-xs" style={{ background: 'var(--primary-subtle)', color: 'var(--primary)' }}>{conversationList.length}</span>
                 </div>
-                <div className="flex items-center gap-2 rounded-2xl px-3 py-2 text-neutral-500 transition hover:bg-neutral-50"><span className="h-2 w-2 rounded-full bg-neutral-300" /> Sent</div>
-                <div className="flex items-center gap-2 rounded-2xl px-3 py-2 text-neutral-500 transition hover:bg-neutral-50"><span className="h-2 w-2 rounded-full bg-neutral-300" /> Drafts</div>
+                <div className="flex items-center gap-2 rounded-2xl px-3 py-2 transition cursor-pointer hover:scale-[1.01]" style={{ color: 'var(--foreground-muted)' }}>
+                  <span className="h-2 w-2 rounded-full" style={{ background: 'var(--foreground-subtle)' }} /> Sent
+                </div>
+                <div className="flex items-center gap-2 rounded-2xl px-3 py-2 transition cursor-pointer hover:scale-[1.01]" style={{ color: 'var(--foreground-muted)' }}>
+                  <span className="h-2 w-2 rounded-full" style={{ background: 'var(--foreground-subtle)' }} /> Drafts
+                </div>
               </div>
             </div>
 
-            <div className="rounded-3xl bg-white/80 p-4 text-xs text-neutral-600 shadow-sm ring-1 ring-black/5">
-              <div className="font-semibold text-neutral-900">What’s XMTP mail?</div>
+            <div className="rounded-3xl p-4 text-xs backdrop-blur-md" style={{ background: 'var(--card-bg)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-subtle)', color: 'var(--foreground-muted)' }}>
+              <div className="font-semibold" style={{ color: 'var(--foreground)' }}>What's XMTP mail?</div>
               <p className="mt-1 leading-relaxed">Threads here are encrypted on XMTP and render like email. No servers or IMAP folders — just wallet-linked messaging.</p>
             </div>
           </aside>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-3 rounded-3xl bg-white/50 p-3 shadow-inner ring-1 ring-black/5">
+
+          <div className="flex min-w-0 flex-1 flex-col gap-3 rounded-3xl p-3" style={{ background: 'var(--surface-glass)', boxShadow: 'var(--shadow-inner)', border: '1px solid var(--border-subtle)' }}>
             <div className="flex flex-1 gap-3 overflow-hidden">
-              <section className="w-full max-w-md shrink-0 overflow-hidden rounded-2xl bg-white/90 shadow-md ring-1 ring-black/5">
-                <div className="border-b px-4 py-3">
+              <section className="w-full max-w-md shrink-0 overflow-hidden rounded-2xl backdrop-blur-md" style={{ background: 'var(--card-bg)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-subtle)' }}>
+                <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-sm font-semibold text-neutral-900">Inbox</div>
-                      <div className="text-[11px] text-neutral-500">Styled like Gmail, powered by XMTP</div>
+                      <div className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Inbox</div>
+                      <div className="text-[11px]" style={{ color: 'var(--foreground-muted)' }}>Styled like Gmail, powered by XMTP</div>
                     </div>
                     <button
                       type="button"
-                      className="rounded-full px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100 transition hover:bg-blue-50 sm:hidden"
+                      className="rounded-full px-3 py-1 text-xs font-semibold transition sm:hidden"
+                      style={{ color: 'var(--primary)', border: '1px solid var(--primary-subtle)', background: 'transparent' }}
                       onClick={() => setComposeOpen(true)}
                     >
                       Compose
@@ -1324,7 +1353,8 @@ const XMTPWebmailClient: React.FC = () => {
                   </div>
                   <div className="mt-2 sm:hidden">
                     <input
-                      className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-sm outline-none shadow-inner transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                      className="w-full rounded-full px-4 py-2 text-sm outline-none transition"
+                      style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--foreground)', boxShadow: 'var(--shadow-inner)' }}
                       placeholder="Search"
                       value={search}
                       onChange={(e) => setSearch(e.currentTarget.value)}
@@ -1333,7 +1363,7 @@ const XMTPWebmailClient: React.FC = () => {
                 </div>
                 <div className="h-full overflow-y-auto">
                   {conversationList.length === 0 ? (
-                    <div className="px-4 py-6 text-sm text-neutral-500">No conversations yet.</div>
+                    <div className="px-4 py-6 text-sm" style={{ color: 'var(--foreground-muted)' }}>No conversations yet.</div>
                   ) : (
                     conversationList.map((summary) => {
                       if (summary.kind === 'welcome') {
@@ -1342,26 +1372,27 @@ const XMTPWebmailClient: React.FC = () => {
                           <button
                             key={summary.id}
                             type="button"
-                            className={[
-                              'w-full border-b px-4 py-3 text-left transition',
-                              isSelected ? 'bg-amber-50' : 'hover:bg-amber-50/60',
-                            ].join(' ')}
+                            className="w-full px-4 py-3 text-left transition hover:scale-[1.005]"
+                            style={{
+                              borderBottom: '1px solid var(--border)',
+                              background: isSelected ? 'var(--welcome-bg)' : 'transparent'
+                            }}
                             onClick={() => setSelectedConversationId(summary.id)}
                           >
                             <div className="flex items-center justify-between gap-3">
                               <div className="flex items-center gap-3 truncate">
-                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-900 ring-1 ring-amber-200">Hi</span>
+                                <span className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold" style={{ background: 'var(--welcome-bg)', color: 'var(--welcome-fg)', border: '1px solid var(--welcome-border)' }}>Hi</span>
                                 <div className="min-w-0">
-                                  <div className="truncate text-sm font-semibold text-neutral-900">{summary.subject}</div>
-                                  <div className="mt-0.5 flex items-center gap-2 text-[11px] text-amber-800">
-                                    <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold">Welcome</span>
+                                  <div className="truncate text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{summary.subject}</div>
+                                  <div className="mt-0.5 flex items-center gap-2 text-[11px]" style={{ color: 'var(--welcome-fg)' }}>
+                                    <span className="rounded-full px-2 py-0.5 font-semibold" style={{ background: 'var(--welcome-bg)', border: '1px solid var(--welcome-border)' }}>Welcome</span>
                                     <span className="truncate">Product tour</span>
                                   </div>
                                 </div>
                               </div>
-                              <div className="shrink-0 text-xs text-neutral-500">{formatTimestamp(summary.timestamp)}</div>
+                              <div className="shrink-0 text-xs" style={{ color: 'var(--foreground-muted)' }}>{formatTimestamp(summary.timestamp)}</div>
                             </div>
-                            <div className="mt-1 truncate text-xs text-neutral-600">{summary.preview}</div>
+                            <div className="mt-1 truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>{summary.preview}</div>
                           </button>
                         );
                       }
@@ -1381,10 +1412,11 @@ const XMTPWebmailClient: React.FC = () => {
                         <button
                           key={summary.id}
                           type="button"
-                          className={[
-                            'w-full border-b px-4 py-3 text-left transition',
-                            isSelected ? 'bg-blue-50' : 'hover:bg-neutral-50',
-                          ].join(' ')}
+                          className="w-full px-4 py-3 text-left transition hover:scale-[1.005]"
+                          style={{
+                            borderBottom: '1px solid var(--border)',
+                            background: isSelected ? 'var(--primary-subtle)' : 'transparent'
+                          }}
                           onClick={() => {
                             setSelectedConversationId(summary.id);
                             void loadMessagesForConversation(summary.conversation);
@@ -1392,17 +1424,17 @@ const XMTPWebmailClient: React.FC = () => {
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3 truncate">
-                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-xs font-semibold text-neutral-700 ring-1 ring-black/5">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border-subtle)' }}>
                                 {label.slice(0, 2).toUpperCase()}
                               </span>
                               <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-neutral-900">{label}</div>
-                                <div className="mt-0.5 truncate text-[11px] text-neutral-500">Encrypted thread on XMTP</div>
+                                <div className="truncate text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{label}</div>
+                                <div className="mt-0.5 truncate text-[11px]" style={{ color: 'var(--foreground-muted)' }}>Encrypted thread on XMTP</div>
                               </div>
                             </div>
-                            <div className="shrink-0 text-xs text-neutral-500">{formatTimestamp(lastMessageDate)}</div>
+                            <div className="shrink-0 text-xs" style={{ color: 'var(--foreground-muted)' }}>{formatTimestamp(lastMessageDate)}</div>
                           </div>
-                          <div className="mt-1 truncate text-xs text-neutral-600">{preview}</div>
+                          <div className="mt-1 truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>{preview}</div>
                         </button>
                       );
                     })
@@ -1426,7 +1458,7 @@ const XMTPWebmailClient: React.FC = () => {
                     />
                   )
                 ) : (
-                  <div className="flex h-full items-center justify-center rounded-2xl bg-white/90 text-sm text-neutral-500 shadow-md ring-1 ring-black/5">
+                  <div className="flex h-full items-center justify-center rounded-2xl text-sm backdrop-blur-md" style={{ background: 'var(--card-bg)', color: 'var(--foreground-muted)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-subtle)' }}>
                     Select a conversation to read messages.
                   </div>
                 )}
@@ -1437,13 +1469,14 @@ const XMTPWebmailClient: React.FC = () => {
       </div>
 
       {composeOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm p-4 sm:items-center">
-          <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
-            <div className="flex items-center justify-between border-b bg-gradient-to-r from-white to-blue-50 px-5 py-4">
-              <div className="text-sm font-semibold text-neutral-900">New message</div>
+        <div className="fixed inset-0 z-50 flex items-end justify-center backdrop-blur-sm p-4 sm:items-center" style={{ background: 'var(--overlay)' }}>
+          <div className="w-full max-w-xl overflow-hidden rounded-2xl" style={{ background: 'var(--modal-bg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-subtle)' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+              <div className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>New message</div>
               <button
                 type="button"
-                className="rounded-lg px-2 py-1 text-sm text-neutral-600 transition hover:bg-neutral-100"
+                className="rounded-lg px-2 py-1 text-sm transition"
+                style={{ color: 'var(--foreground-muted)' }}
                 onClick={() => {
                   setComposeOpen(false);
                   setComposeError(null);
@@ -1454,12 +1487,13 @@ const XMTPWebmailClient: React.FC = () => {
             </div>
 
             <div className="space-y-3 px-5 py-4">
-              {composeError ? <div className="text-sm text-red-600">{composeError}</div> : null}
+              {composeError ? <div className="text-sm" style={{ color: 'var(--accent-error)' }}>{composeError}</div> : null}
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-600">To</label>
+                <label className="block text-xs font-semibold" style={{ color: 'var(--foreground-muted)' }}>To</label>
                 <input
-                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                  className="mt-1 w-full rounded-xl px-3 py-2 text-sm outline-none transition"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--foreground)' }}
                   placeholder="deanpierce.eth@xmtp.mx"
                   value={composeTo}
                   onChange={(e) => setComposeTo(e.currentTarget.value)}
@@ -1467,9 +1501,10 @@ const XMTPWebmailClient: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-600">Subject</label>
+                <label className="block text-xs font-semibold" style={{ color: 'var(--foreground-muted)' }}>Subject</label>
                 <input
-                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                  className="mt-1 w-full rounded-xl px-3 py-2 text-sm outline-none transition"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--foreground)' }}
                   placeholder="(no subject)"
                   value={composeSubject}
                   onChange={(e) => setComposeSubject(e.currentTarget.value)}
@@ -1477,9 +1512,10 @@ const XMTPWebmailClient: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-600">Message</label>
+                <label className="block text-xs font-semibold" style={{ color: 'var(--foreground-muted)' }}>Message</label>
                 <textarea
-                  className="mt-1 min-h-[160px] w-full resize-y rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                  className="mt-1 min-h-[160px] w-full resize-y rounded-xl px-3 py-2 text-sm outline-none transition"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--foreground)' }}
                   placeholder="Write your message…"
                   value={composeBody}
                   onChange={(e) => setComposeBody(e.currentTarget.value)}
@@ -1487,10 +1523,11 @@ const XMTPWebmailClient: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t bg-neutral-50 px-5 py-4">
+            <div className="flex items-center justify-end gap-2 px-5 py-4" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
               <button
                 type="button"
-                className="rounded-xl px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-100"
+                className="rounded-xl px-4 py-2 text-sm font-semibold transition"
+                style={{ color: 'var(--foreground-muted)' }}
                 onClick={() => setComposeOpen(false)}
                 disabled={composeIsSending}
               >
@@ -1498,7 +1535,8 @@ const XMTPWebmailClient: React.FC = () => {
               </button>
               <button
                 type="button"
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-md)' }}
                 onClick={() => void handleComposeSend()}
                 disabled={composeIsSending || !composeTo.trim()}
               >

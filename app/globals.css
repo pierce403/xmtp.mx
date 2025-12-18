@@ -2,26 +2,360 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========================================
+   XMTP.MX Theme System - Light & Dark Mode
+   ======================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Color scheme indicator */
+  color-scheme: light;
+  
+  /* ===== Core Colors ===== */
+  --background: #f8fafc;
+  --background-subtle: #f1f5f9;
+  --foreground: #0f172a;
+  --foreground-muted: #64748b;
+  --foreground-subtle: #94a3b8;
+  
+  /* ===== Surface Colors ===== */
+  --surface: #ffffff;
+  --surface-hover: #f8fafc;
+  --surface-active: #f1f5f9;
+  --surface-elevated: rgba(255, 255, 255, 0.95);
+  --surface-glass: rgba(255, 255, 255, 0.8);
+  
+  /* ===== Border Colors ===== */
+  --border: #e2e8f0;
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-focus: #3b82f6;
+  
+  /* ===== Primary Brand Colors ===== */
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-subtle: #dbeafe;
+  --primary-foreground: #ffffff;
+  --primary-gradient-from: #3b82f6;
+  --primary-gradient-to: #6366f1;
+  
+  /* ===== Secondary Brand Colors ===== */
+  --secondary: #6366f1;
+  --secondary-hover: #4f46e5;
+  --secondary-subtle: #e0e7ff;
+  
+  /* ===== Accent Colors ===== */
+  --accent-success: #10b981;
+  --accent-success-subtle: #d1fae5;
+  --accent-warning: #f59e0b;
+  --accent-warning-subtle: #fef3c7;
+  --accent-error: #ef4444;
+  --accent-error-subtle: #fee2e2;
+  --accent-info: #0ea5e9;
+  --accent-info-subtle: #e0f2fe;
+  
+  /* ===== Shadows ===== */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+  
+  /* ===== Gradient Backgrounds ===== */
+  --gradient-page: linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f0f9ff 100%);
+  --gradient-surface: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+  --gradient-accent: linear-gradient(135deg, var(--primary-gradient-from) 0%, var(--primary-gradient-to) 100%);
+  
+  /* ===== Ring Colors ===== */
+  --ring: rgba(59, 130, 246, 0.5);
+  --ring-offset: #ffffff;
+  
+  /* ===== Input & Form Colors ===== */
+  --input-bg: #ffffff;
+  --input-border: #e2e8f0;
+  --input-focus-ring: rgba(59, 130, 246, 0.25);
+  
+  /* ===== Overlay Colors ===== */
+  --overlay: rgba(0, 0, 0, 0.4);
+  --backdrop: rgba(255, 255, 255, 0.8);
+  
+  /* ===== Scrollbar Colors ===== */
+  --scrollbar-track: #f1f5f9;
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
+  
+  /* ===== Special Component Colors ===== */
+  --header-bg: rgba(255, 255, 255, 0.9);
+  --sidebar-bg: rgba(255, 255, 255, 0.9);
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --modal-bg: #ffffff;
+  --tooltip-bg: #1e293b;
+  --tooltip-fg: #ffffff;
+  
+  /* ===== Welcome Thread Colors ===== */
+  --welcome-bg: #fef3c7;
+  --welcome-fg: #92400e;
+  --welcome-border: #fcd34d;
+  --welcome-accent: #f59e0b;
+  
+  /* ===== Status Indicator Colors ===== */
+  --status-online: #10b981;
+  --status-offline: #94a3b8;
+  --status-busy: #ef4444;
+  --status-away: #f59e0b;
+  
+  /* ===== Animation Durations ===== */
+  --transition-fast: 150ms;
+  --transition-normal: 200ms;
+  --transition-slow: 300ms;
+  
+  /* ===== Border Radius ===== */
+  --radius-sm: 0.375rem;
+  --radius: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-full: 9999px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ========================================
+   Dark Theme
+   ======================================== */
+.dark {
+  color-scheme: dark;
+  
+  /* ===== Core Colors ===== */
+  --background: #0c0f17;
+  --background-subtle: #111827;
+  --foreground: #f1f5f9;
+  --foreground-muted: #94a3b8;
+  --foreground-subtle: #64748b;
+  
+  /* ===== Surface Colors ===== */
+  --surface: #1e2433;
+  --surface-hover: #252d3d;
+  --surface-active: #2d3748;
+  --surface-elevated: rgba(30, 36, 51, 0.95);
+  --surface-glass: rgba(30, 36, 51, 0.8);
+  
+  /* ===== Border Colors ===== */
+  --border: #2d3748;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-focus: #60a5fa;
+  
+  /* ===== Primary Brand Colors ===== */
+  --primary: #60a5fa;
+  --primary-hover: #3b82f6;
+  --primary-subtle: rgba(59, 130, 246, 0.15);
+  --primary-foreground: #0c0f17;
+  --primary-gradient-from: #3b82f6;
+  --primary-gradient-to: #818cf8;
+  
+  /* ===== Secondary Brand Colors ===== */
+  --secondary: #818cf8;
+  --secondary-hover: #6366f1;
+  --secondary-subtle: rgba(99, 102, 241, 0.15);
+  
+  /* ===== Accent Colors ===== */
+  --accent-success: #34d399;
+  --accent-success-subtle: rgba(16, 185, 129, 0.15);
+  --accent-warning: #fbbf24;
+  --accent-warning-subtle: rgba(245, 158, 11, 0.15);
+  --accent-error: #f87171;
+  --accent-error-subtle: rgba(239, 68, 68, 0.15);
+  --accent-info: #38bdf8;
+  --accent-info-subtle: rgba(14, 165, 233, 0.15);
+  
+  /* ===== Shadows (adjusted for dark mode) ===== */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 30px rgba(96, 165, 250, 0.2);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.3);
+  
+  /* ===== Gradient Backgrounds ===== */
+  --gradient-page: linear-gradient(135deg, #0c0f17 0%, #111827 50%, #0f172a 100%);
+  --gradient-surface: linear-gradient(180deg, #1e2433 0%, #1a202c 100%);
+  --gradient-accent: linear-gradient(135deg, var(--primary-gradient-from) 0%, var(--primary-gradient-to) 100%);
+  
+  /* ===== Ring Colors ===== */
+  --ring: rgba(96, 165, 250, 0.5);
+  --ring-offset: #0c0f17;
+  
+  /* ===== Input & Form Colors ===== */
+  --input-bg: #1e2433;
+  --input-border: #374151;
+  --input-focus-ring: rgba(96, 165, 250, 0.25);
+  
+  /* ===== Overlay Colors ===== */
+  --overlay: rgba(0, 0, 0, 0.6);
+  --backdrop: rgba(12, 15, 23, 0.8);
+  
+  /* ===== Scrollbar Colors ===== */
+  --scrollbar-track: #1e2433;
+  --scrollbar-thumb: #374151;
+  --scrollbar-thumb-hover: #4b5563;
+  
+  /* ===== Special Component Colors ===== */
+  --header-bg: rgba(30, 36, 51, 0.9);
+  --sidebar-bg: rgba(30, 36, 51, 0.9);
+  --card-bg: rgba(30, 36, 51, 0.9);
+  --modal-bg: #1e2433;
+  --tooltip-bg: #f1f5f9;
+  --tooltip-fg: #0c0f17;
+  
+  /* ===== Welcome Thread Colors ===== */
+  --welcome-bg: rgba(245, 158, 11, 0.15);
+  --welcome-fg: #fcd34d;
+  --welcome-border: rgba(245, 158, 11, 0.3);
+  --welcome-accent: #f59e0b;
+  
+  /* ===== Status Indicator Colors ===== */
+  --status-online: #34d399;
+  --status-offline: #64748b;
+  --status-busy: #f87171;
+  --status-away: #fbbf24;
 }
 
+/* ========================================
+   Base Styles
+   ======================================== */
 body {
   color: var(--foreground);
-  background: var(--background);
+  background: var(--gradient-page);
   font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+  min-height: 100dvh;
 }
 
+/* ===== Smooth Theme Transitions ===== */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: var(--transition-fast);
+}
+
+/* Disable transitions during theme change to prevent flash */
+.theme-transitioning * {
+  transition-duration: 0ms !important;
+}
+
+/* ===== Custom Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* ===== Focus Styles ===== */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* ===== Selection Styles ===== */
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* ========================================
+   Utility Classes
+   ======================================== */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  
+  /* Glass morphism effect */
+  .glass {
+    background: var(--surface-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  
+  /* Subtle glow effect */
+  .glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  /* Theme-aware gradient text */
+  .gradient-text {
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* ========================================
+   Component Presets
+   ======================================== */
+@layer components {
+  /* Card component */
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-subtle);
+  }
+  
+  /* Input component */
+  .input {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-full);
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    transition: all var(--transition-fast);
+  }
+  
+  .input:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
+    outline: none;
+  }
+  
+  /* Button component */
+  .btn-primary {
+    background: var(--gradient-accent);
+    color: var(--primary-foreground);
+    border-radius: var(--radius-full);
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-fast);
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+  }
+  
+  .btn-primary:active {
+    transform: translateY(0);
   }
 }
