@@ -1374,7 +1374,7 @@ const XMTPWebmailClient: React.FC = () => {
                       {(!search || 'welcome xmtp team'.includes(search.toLowerCase())) && (
                         <button
                           type="button"
-                          className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition border-b"
+                          className="flex w-full items-center gap-3 px-3 py-3 text-left transition border-b"
                           style={{
                             borderColor: 'var(--border)',
                             background: demoSelectedId === WELCOME_CONVERSATION_ID ? 'var(--welcome-bg)' : 'transparent'
@@ -1382,10 +1382,8 @@ const XMTPWebmailClient: React.FC = () => {
                           onClick={() => setDemoSelectedId(WELCOME_CONVERSATION_ID)}
                         >
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: 'var(--welcome-bg)', color: 'var(--welcome-fg)', border: '1px solid var(--welcome-border)' }}>Hi</div>
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate font-semibold text-xs" style={{ color: 'var(--foreground)' }}>XMTP Team</div>
-                            <div className="truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>Welcome to xmtp.mx</div>
-                          </div>
+                          <div className="w-24 shrink-0 truncate font-semibold text-xs" style={{ color: 'var(--foreground)' }}>XMTP Team</div>
+                          <div className="min-w-0 flex-1 truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>Welcome to xmtp.mx</div>
                           <div className="text-[10px] shrink-0" style={{ color: 'var(--foreground-subtle)' }}>Now</div>
                         </button>
                       )}
@@ -1400,12 +1398,12 @@ const XMTPWebmailClient: React.FC = () => {
                         })
                         .map((convo) => {
                           const lastMsg = convo.messages[convo.messages.length - 1];
-                          const subject = lastMsg?.isEmail && lastMsg.subject ? lastMsg.subject : lastMsg?.content.slice(0, 40);
+                          const subject = lastMsg?.isEmail && lastMsg.subject ? lastMsg.subject : lastMsg?.content.slice(0, 50);
                           return (
                             <button
                               type="button"
                               key={convo.id}
-                              className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition border-b"
+                              className="flex w-full items-center gap-3 px-3 py-3 text-left transition border-b"
                               style={{
                                 borderColor: 'var(--border)',
                                 background: demoSelectedId === convo.id ? 'var(--primary-subtle)' : 'transparent'
@@ -1415,10 +1413,8 @@ const XMTPWebmailClient: React.FC = () => {
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border-subtle)' }}>
                                 {(convo.peerName || convo.peerAddress).slice(0, 2).toUpperCase()}
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate font-semibold text-xs" style={{ color: 'var(--foreground)' }}>{convo.peerName || convo.peerAddress}</div>
-                                <div className="truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>{subject}</div>
-                              </div>
+                              <div className="w-24 shrink-0 truncate font-semibold text-xs" style={{ color: 'var(--foreground)' }}>{convo.peerName || convo.peerAddress}</div>
+                              <div className="min-w-0 flex-1 truncate text-xs" style={{ color: 'var(--foreground-muted)' }}>{subject}</div>
                               <div className="text-[10px] shrink-0" style={{ color: 'var(--foreground-subtle)' }}>{formatTimestamp(convo.lastMessageAt)}</div>
                             </button>
                           );
