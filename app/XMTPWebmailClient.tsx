@@ -1172,56 +1172,59 @@ const XMTPWebmailClient: React.FC = () => {
       <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]" style={{ background: 'var(--gradient-page)' }}>
         <div className="mx-auto flex h-dvh max-w-7xl flex-col gap-4 px-4 pb-4 pt-4 lg:px-6">
           {/* Header */}
-          <header className="card-shiny flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between backdrop-blur-md" style={{ background: 'var(--header-bg)', borderRadius: 'var(--radius-2xl)' }}>
+          <header className="card-shiny flex items-center justify-between px-4 py-3 backdrop-blur-md" style={{ background: 'var(--header-bg)', borderRadius: 'var(--radius-xl)' }}>
+            {/* Left: Logo + Title */}
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-bold text-white" style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-glow)' }}>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl text-base" style={{ background: 'var(--gradient-accent)' }}>
                 ✉️
               </div>
               <div>
-                <div className="text-lg font-bold tracking-tight" style={{ color: 'var(--foreground)' }}>xmtp.mx</div>
-                <div className="sync-indicator text-[10px]">
+                <div className="text-base font-bold" style={{ color: 'var(--foreground)' }}>xmtp.mx</div>
+                <div className="text-[10px]" style={{ color: 'var(--foreground-muted)' }}>
                   Synced {formatTimestamp(lastSyncTime)}
                 </div>
               </div>
-            </div>
-            <div className="flex w-full flex-1 items-center gap-2 sm:w-auto sm:gap-3">
-              <div className="hidden flex-1 sm:block">
-                <input
-                  className="input w-full"
-                  placeholder="Search mail..."
-                  value={search}
-                  onChange={(e) => setSearch(e.currentTarget.value)}
-                />
-              </div>
-              <div className="flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider" style={{ background: 'var(--welcome-bg)', color: 'var(--welcome-fg)', border: '1px solid var(--welcome-border)' }}>
+              <div className="ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase" style={{ background: 'var(--welcome-bg)', color: 'var(--welcome-fg)' }}>
                 Demo
               </div>
-              <ThemeToggle />
+            </div>
+
+            {/* Right: Theme Toggle + Settings + Identity */}
+            <div className="flex items-center gap-2">
+              {/* Theme Toggle - More Prominent */}
+              <div className="rounded-lg p-1" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <ThemeToggle />
+              </div>
+
               {/* Settings */}
               <button
                 type="button"
-                className="rounded-xl p-2 transition hover:bg-[var(--surface-hover)]"
+                className="rounded-lg p-2 transition hover:bg-[var(--surface-hover)]"
                 style={{ color: 'var(--foreground-muted)' }}
                 title="Settings"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                  <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </button>
-              {/* Profile / Identity */}
-              <div className="flex items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-[var(--surface-hover)]" style={{ cursor: 'pointer' }}>
-                <div className="avatar h-8 w-8 flex items-center justify-center text-xs font-bold" style={{ background: 'var(--gradient-accent)', color: 'white' }}>
+
+              {/* Divider */}
+              <div className="h-6 w-px" style={{ background: 'var(--border)' }}></div>
+
+              {/* Identity / Profile */}
+              <button type="button" className="flex items-center gap-2 rounded-lg px-2 py-1.5 transition hover:bg-[var(--surface-hover)]">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white" style={{ background: 'var(--gradient-accent)' }}>
                   DP
                 </div>
-                <div className="hidden sm:block">
-                  <div className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>demo.eth</div>
+                <div className="hidden sm:block text-left">
+                  <div className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>demo.eth</div>
                   <div className="text-[10px]" style={{ color: 'var(--foreground-muted)' }}>0x71C7...1F3a</div>
                 </div>
                 <svg className="h-4 w-4 hidden sm:block" style={{ color: 'var(--foreground-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path d="M19 9l-7 7-7-7" />
                 </svg>
-              </div>
+              </button>
             </div>
           </header>
 
