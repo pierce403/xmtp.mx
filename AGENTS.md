@@ -1,4 +1,4 @@
-# IMPORTANT (Pierce)
+# IMPORTANT
 
 - After each meaningful change: `git commit` + `git push` (don’t leave work unpushed).
 
