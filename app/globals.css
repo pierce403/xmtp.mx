@@ -733,4 +733,34 @@ body {
   .border-gradient:hover::before {
     opacity: 1;
   }
+
+  /* Metallic landing hero */
+  .hero-metallic {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 15% 15%, rgba(129, 140, 248, 0.28), transparent 45%),
+      radial-gradient(90% 70% at 85% 10%, rgba(236, 72, 153, 0.25), transparent 50%),
+      radial-gradient(80% 80% at 50% 90%, rgba(59, 130, 246, 0.18), transparent 55%),
+      linear-gradient(135deg, #0b1024 0%, #161033 40%, #231547 70%, #0a0a1a 100%);
+    color: #e5e7eb;
+  }
+
+  .hero-metallic::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0));
+    mix-blend-mode: screen;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  .dark .hero-metallic {
+    background:
+      radial-gradient(120% 90% at 15% 15%, rgba(129, 140, 248, 0.22), transparent 45%),
+      radial-gradient(90% 70% at 85% 10%, rgba(236, 72, 153, 0.18), transparent 50%),
+      radial-gradient(80% 80% at 50% 90%, rgba(94, 234, 212, 0.12), transparent 55%),
+      linear-gradient(135deg, #05060f 0%, #0f0b24 40%, #1b0f36 70%, #05060f 100%);
+  }
 }
