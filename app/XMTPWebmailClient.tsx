@@ -275,16 +275,19 @@ function StartupStatusPanel({
   );
 
   return (
-    <div className="mt-4 w-full max-w-xl rounded-2xl border bg-white px-4 py-3 text-left shadow-sm ring-1 ring-black/5">
-      <div className="text-sm font-semibold text-neutral-900">Startup status</div>
-      <div className="mt-2 space-y-2 text-xs text-neutral-700">
+    <div
+      className="mt-4 w-full max-w-xl rounded-2xl border px-4 py-3 text-left shadow-sm"
+      style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-md)' }}
+    >
+      <div className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>Startup status</div>
+      <div className="mt-2 space-y-2 text-xs" style={{ color: 'var(--foreground-muted)' }}>
         {items.map((item) => (
           <div key={item.label} className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
               <span className={['mt-0.5 h-2 w-2 shrink-0 rounded-full', toneDotClass(item.tone)].join(' ')} />
-              <span className="shrink-0 font-semibold text-neutral-800">{item.label}</span>
+              <span className="shrink-0 font-semibold" style={{ color: 'var(--foreground)' }}>{item.label}</span>
             </div>
-            <div className="min-w-0 text-right text-neutral-700">
+            <div className="min-w-0 text-right" style={{ color: 'var(--foreground)' }}>
               <span className="break-words">{item.value}</span>
             </div>
           </div>
@@ -292,14 +295,17 @@ function StartupStatusPanel({
       </div>
 
       <details className="mt-3">
-        <summary className="cursor-pointer select-none text-xs font-semibold text-neutral-700">Debug details</summary>
-        <div className="mt-2 text-[11px] text-neutral-600">
+        <summary className="cursor-pointer select-none text-xs font-semibold" style={{ color: 'var(--foreground)' }}>Debug details</summary>
+        <div className="mt-2 text-[11px]" style={{ color: 'var(--foreground-muted)' }}>
           Enable console logs:{' '}
-          <code className="rounded bg-neutral-100 px-1 py-0.5">
+          <code className="rounded px-1 py-0.5" style={{ background: 'var(--background-subtle)', color: 'var(--foreground)' }}>
             {"localStorage.setItem('xmtp.mx.debug','1')"}
           </code>
         </div>
-        <pre className="mt-2 max-h-56 overflow-auto rounded-xl bg-neutral-950 px-3 py-2 text-[11px] text-neutral-100">
+        <pre
+          className="mt-2 max-h-56 overflow-auto rounded-xl px-3 py-2 text-[11px]"
+          style={{ background: 'var(--background-subtle)', color: 'var(--foreground)' }}
+        >
           {diagnosticsText}
         </pre>
       </details>
@@ -585,14 +591,25 @@ const XMTPWebmailClient: React.FC = () => {
     origin: DemoModalRect;
   } | null>(null);
 
+  const enableDemoMode = useCallback((options?: { fromUrl?: boolean }) => {
+    setDemoMode(true);
+    setDemoSelectedId(null);
+    setDemoView('inbox');
+    if (typeof window !== 'undefined' && !options?.fromUrl) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('demo', '1');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       if (params.has('demo')) {
-        setDemoMode(true);
+        enableDemoMode({ fromUrl: true });
       }
     }
-  }, []);
+  }, [enableDemoMode]);
 
   useEffect(() => {
     console.log(`[xmtp.mx] compose modal ${composeOpen ? 'open' : 'close'}`, { demoMode });
@@ -1950,29 +1967,112 @@ const XMTPWebmailClient: React.FC = () => {
 
   if (!activeAccount) {
     return (
-      <div className="min-h-dvh" style={{ background: 'var(--gradient-page)', color: 'var(--foreground)' }}>
+      <div className="hero-metallic min-h-dvh text-white">
         <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
-        <div className="absolute right-4 top-4"><ThemeToggle /></div>
-        <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>xmtp.mx</h1>
-          <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} autoConnect={false} />
-          {xmtpError && <p className="text-sm" style={{ color: 'var(--accent-error)' }}>{xmtpError}</p>}
-          <StartupStatusPanel
-            xmtpEnv={xmtpEnv}
-            thirdwebClient={Boolean(thirdwebClient)}
-            thirdwebClientIdStatus={thirdwebClientIdStatus}
-            thirdwebClientIdError={thirdwebClientIdError}
-            activeAddress={activeAddress}
-            hasActiveWallet={hasActiveWallet}
-            isWasmInitialized={isWasmInitialized}
-            wasmInitStalled={wasmInitStalled}
-            wasmError={wasmError}
-            isLoading={xmtpLoading}
-            xmtpInitStalled={xmtpInitStalled}
-            clientError={xmtpError ?? undefined}
-            clientAddress={clientAddress}
-            conversationsCount={xmtpConversationList.length}
-          />
+        <div className="absolute right-4 top-4 z-20"><ThemeToggle /></div>
+
+        <div className="relative mx-auto flex min-h-dvh max-w-6xl flex-col justify-center px-6 py-12">
+          <div className="pointer-events-none absolute inset-0 opacity-60">
+            <div className="absolute left-[-10%] top-[-6%] h-56 w-56 rounded-full blur-3xl" style={{ background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.35), transparent 60%)' }} />
+            <div className="absolute right-[-6%] top-12 h-72 w-72 rounded-full blur-3xl" style={{ background: 'radial-gradient(circle at 30% 30%, rgba(139,92,246,0.35), transparent 55%)' }} />
+            <div className="absolute bottom-[-12%] right-[-8%] h-64 w-64 rounded-full blur-3xl" style={{ background: 'radial-gradient(circle at 30% 30%, rgba(79,70,229,0.28), transparent 55%)' }} />
+            <div className="absolute inset-12 rounded-[32px] border border-white/10" style={{ background: 'linear-gradient(120deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))' }} />
+          </div>
+
+          <div className="relative overflow-hidden rounded-[32px] border border-white/15 bg-white/5 p-8 shadow-[0_20px_80px_rgba(0,0,0,0.35)] backdrop-blur-3xl">
+            <div className="pointer-events-none absolute inset-0 opacity-30" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))' }} />
+
+            <div className="relative grid gap-10 lg:grid-cols-2">
+              <div className="space-y-6">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">
+                  <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.7)]" /> XMTP + Static export
+                </div>
+
+                <div className="space-y-3">
+                  <h1 className="text-3xl font-bold leading-tight text-white md:text-4xl">
+                    xmtp.mx mail — now with a purple metallic welcome
+                  </h1>
+                  <p className="max-w-2xl text-base text-white/80">
+                    All the same details as before: XMTP threads that look like email, end-to-end encryption, and wallet-backed identity.
+                    Connect to start messaging or jump into the guided demo to explore the inbox layout.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="card-shiny border border-white/15 bg-white/10 p-4 shadow-[0_15px_50px_rgba(0,0,0,0.35)]">
+                    <div className="text-sm font-semibold text-white">Encrypted inbox</div>
+                    <p className="mt-1 text-sm text-white/75">Wallet-based XMTP identity with Gmail-inspired threading.</p>
+                  </div>
+                  <div className="card-shiny border border-white/15 bg-white/10 p-4 shadow-[0_15px_50px_rgba(0,0,0,0.35)]">
+                    <div className="text-sm font-semibold text-white">Static-friendly</div>
+                    <p className="mt-1 text-sm text-white/75">Built for GitHub Pages with client-side XMTP and thirdweb.</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="rounded-full bg-white/90 px-2 py-1 text-sm font-semibold text-slate-900 shadow-lg ring-1 ring-white/30">
+                    <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} autoConnect={false} />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-nav flex items-center gap-2 border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:text-white"
+                    onClick={() => enableDemoMode()}
+                  >
+                    <span className="inline-block h-2 w-2 rounded-full bg-purple-200 shadow-[0_0_8px_rgba(196,181,253,0.8)]" />
+                    Launch demo mode
+                  </button>
+                  <div className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[12px] font-semibold text-white/80">
+                    <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.7)]" />
+                    XMTP {xmtpEnv}
+                  </div>
+                </div>
+
+                {xmtpError && <p className="text-sm text-rose-200">{xmtpError}</p>}
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-3xl border border-white/15 bg-white/10 p-5 shadow-[0_15px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-white">System checks</div>
+                      <div className="text-xs text-white/70">Wallet provider, XMTP, and thirdweb readiness</div>
+                    </div>
+                    <div className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-[11px] font-semibold text-white/80">
+                      <span className="h-2 w-2 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(125,211,252,0.7)]" />
+                      Live preview
+                    </div>
+                  </div>
+                  <StartupStatusPanel
+                    xmtpEnv={xmtpEnv}
+                    thirdwebClient={Boolean(thirdwebClient)}
+                    thirdwebClientIdStatus={thirdwebClientIdStatus}
+                    thirdwebClientIdError={thirdwebClientIdError}
+                    activeAddress={activeAddress}
+                    hasActiveWallet={hasActiveWallet}
+                    isWasmInitialized={isWasmInitialized}
+                    wasmInitStalled={wasmInitStalled}
+                    wasmError={wasmError}
+                    isLoading={xmtpLoading}
+                    xmtpInitStalled={xmtpInitStalled}
+                    clientError={xmtpError ?? undefined}
+                    clientAddress={clientAddress}
+                    conversationsCount={xmtpConversationList.length}
+                  />
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="card-shiny border border-white/15 bg-white/10 p-4 text-white shadow-[0_10px_35px_rgba(0,0,0,0.35)]">
+                    <div className="text-sm font-semibold">Email-like threads</div>
+                    <p className="mt-1 text-sm text-white/75">Compose to ENS or 0x addresses; SMTP delivery is on the roadmap.</p>
+                  </div>
+                  <div className="card-shiny border border-white/15 bg-white/10 p-4 text-white shadow-[0_10px_35px_rgba(0,0,0,0.35)]">
+                    <div className="text-sm font-semibold">Try before connecting</div>
+                    <p className="mt-1 text-sm text-white/75">Demo mode mirrors the inbox layout with safe mock data.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
