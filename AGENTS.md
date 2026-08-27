@@ -127,6 +127,11 @@ npm run cloudflare:dry-run:production
 - Misses: WalletConnect can log `Error: emitting session_request:<id> without any listeners` (from `@walletconnect/sign-client`) during thirdweb auto-connect; disable `autoConnect` on `ConnectButton` to stop the noisy auto-connect path.
 
 ### 2026-08-27
+- Wins: A restrained, editorial visual system works better than layered glass effects for this mail UI; keep core surfaces flat, reserve violet for primary actions, and use `app-frame`, `landing-panel`, and the shared component presets in `app/globals.css`.
+- Wins: Verify visual changes at 1440px and 412px, then run `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e`; the suite covers responsive hierarchy, 44px primary action targets, wallet binding, navigation, search, dialogs, and viewport containment.
+- Misses: Decorative text inside a connector button changes its accessible name; set an explicit `aria-label` such as `${wallet.name} Connect` so screen-reader and Playwright locators remain stable.
+
+### 2026-08-27
 - Wins: Cloudflare Workers Static Assets accepts the complete `out/` export (1,058 files in the final verified build); staging, production-preview, and cutover Wrangler configurations pass `wrangler deploy --dry-run`.
 - Wins: Keep staging and production in separate Wrangler files so staging cannot claim `xmtp.mx`; upload production candidates with Workers Versions, verify the preview alias, and promote the exact version tag.
 - Misses: A route-free full `wrangler deploy` still updates a production Worker that already has a Custom Domain. Use it only once for bootstrap; after cutover use `versions upload`, `versions deploy`, and `triggers deploy`.

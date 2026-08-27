@@ -69,6 +69,34 @@ test('landing explains the product and opens the demo', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Exit demo' })).toBeVisible();
 });
 
+test('landing hierarchy adapts cleanly and keeps primary actions touch-sized', async ({ page }) => {
+  await page.goto('/');
+
+  const heading = page.getByRole('heading', { name: 'Your wallet has an inbox.' });
+  const preview = page.getByText('Inbox preview', { exact: true });
+  const connect = page.getByRole('button', { name: 'Connect wallet' });
+  const demo = page.getByRole('button', { name: 'Open demo inbox' });
+
+  const [headingBox, previewBox, connectBox, demoBox] = await Promise.all([
+    heading.boundingBox(),
+    preview.boundingBox(),
+    connect.boundingBox(),
+    demo.boundingBox(),
+  ]);
+
+  expect(headingBox).not.toBeNull();
+  expect(previewBox).not.toBeNull();
+  expect(connectBox?.height).toBeGreaterThanOrEqual(44);
+  expect(demoBox?.height).toBeGreaterThanOrEqual(44);
+  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  if (page.viewportSize()!.width >= 1024) {
+    expect(previewBox!.x).toBeGreaterThan(headingBox!.x + headingBox!.width * 0.7);
+  } else {
+    expect(previewBox!.y).toBeGreaterThan(headingBox!.y + headingBox!.height);
+  }
+});
+
 test('demo navigation and search behave like a mail client', async ({ page }) => {
   await page.goto('/?demo=1');
 
