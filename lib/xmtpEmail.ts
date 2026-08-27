@@ -18,7 +18,7 @@ export type RelayEmailRequest = {
 export type RelayEmailResult = {
   type: 'email.send.result.v1';
   ok: boolean;
-  mailgunId?: string | null;
+  providerMessageId?: string | null;
   error?: string | null;
 };
 
@@ -73,7 +73,7 @@ export function decodeXmtpEmail(content: unknown): DecodedXmtpEmail {
         result: {
           type: 'email.send.result.v1',
           ok: parsed.ok,
-          mailgunId: typeof parsed.mailgunId === 'string' ? parsed.mailgunId : null,
+          providerMessageId: typeof parsed.providerMessageId === 'string' ? parsed.providerMessageId : null,
           error: typeof parsed.error === 'string' ? parsed.error : null,
         },
       };

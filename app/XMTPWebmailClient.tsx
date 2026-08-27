@@ -408,7 +408,7 @@ function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply, th
                       <div className="space-y-1 text-sm" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>
                         <div className="font-semibold">{decoded.result.ok ? 'Email delivered' : 'Email delivery failed'}</div>
                         {decoded.result.error ? <div>{decoded.result.error}</div> : null}
-                        {decoded.result.mailgunId ? <div className="text-xs opacity-70">Receipt {decoded.result.mailgunId}</div> : null}
+                        {decoded.result.providerMessageId ? <div className="text-xs opacity-70">Receipt {decoded.result.providerMessageId}</div> : null}
                       </div>
                     ) : (
                       <div className="whitespace-pre-wrap text-sm" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>{decoded.text}</div>
@@ -1361,7 +1361,7 @@ const XMTPWebmailClient: React.FC = () => {
       if (parsed.kind === 'smtp') {
         const relayInboxId = getRelayInboxId();
         if (!relayInboxId) {
-          throw new Error('Email delivery is temporarily unavailable because the relay is not configured.');
+          throw new Error('Cloudflare email delivery is not active yet.');
         }
         if (relayInboxId === xmtpClient.inboxId) {
           throw new Error('This XMTP identity cannot send through itself as the email relay.');

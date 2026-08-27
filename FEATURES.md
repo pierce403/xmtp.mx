@@ -102,6 +102,7 @@
   - `0x…@xmtp.mx` maps directly to the 0x address
   - Non-`@xmtp.mx` recipients are sent to the configured relay inbox as `email.send.v1`
   - The browser receives only the relay's public inbox ID; private relay credentials remain server-side
+  - Sending stays disabled until `NEXT_PUBLIC_CLOUDFLARE_RELAY_READY=true` confirms the Cloudflare-only listener is active
 - **Test Criteria**:
   - [ ] Composing to `0x...@xmtp.mx` sends a JSON email message on XMTP
   - [ ] Composing to `deanpierce.eth@xmtp.mx` resolves via ENS and sends on XMTP

@@ -47,9 +47,9 @@ test('decodes relay requests and delivery receipts for readable UI', () => {
   ).toMatchObject({ kind: 'relay-request', request: { to: ['recipient@example.com'], subject: 'Hello' } });
 
   expect(
-    decodeXmtpEmail(JSON.stringify({ type: 'email.send.result.v1', ok: true, mailgunId: 'queued-123', error: null })),
+    decodeXmtpEmail(JSON.stringify({ type: 'email.send.result.v1', ok: true, providerMessageId: 'queued-123', error: null })),
   ).toEqual({
     kind: 'relay-result',
-    result: { type: 'email.send.result.v1', ok: true, mailgunId: 'queued-123', error: null },
+    result: { type: 'email.send.result.v1', ok: true, providerMessageId: 'queued-123', error: null },
   });
 });

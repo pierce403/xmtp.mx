@@ -44,6 +44,7 @@ jobs:
           NEXT_PUBLIC_THIRDWEB_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_THIRDWEB_CLIENT_ID }}
           NEXT_PUBLIC_MAINNET_RPC_URL: ${{ secrets.NEXT_PUBLIC_MAINNET_RPC_URL }}
           NEXT_PUBLIC_XMTP_RELAY_INBOX_ID: ${{ vars.NEXT_PUBLIC_XMTP_RELAY_INBOX_ID }}
+          NEXT_PUBLIC_CLOUDFLARE_RELAY_READY: ${{ vars.NEXT_PUBLIC_CLOUDFLARE_RELAY_READY }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

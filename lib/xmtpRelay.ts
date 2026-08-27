@@ -15,6 +15,7 @@ export function normalizeRelayInboxId(value: string | undefined): string | null 
 }
 
 export function getRelayInboxId(): string | null {
+  if (process.env.NEXT_PUBLIC_CLOUDFLARE_RELAY_READY !== 'true') return null;
   return normalizeRelayInboxId(process.env.NEXT_PUBLIC_XMTP_RELAY_INBOX_ID);
 }
 
