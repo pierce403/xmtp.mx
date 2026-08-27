@@ -2,30 +2,49 @@
 
 ## Features
 
-### Static Export (GitHub Pages)
+### Static Export (Cloudflare Workers Static Assets)
 
 - **Stability**: stable
-- **Description**: Builds to static HTML/CSS/JS via Next.js static export and serves from GitHub Pages.
+- **Description**: Builds to static HTML/CSS/JS via Next.js static export and serves from Cloudflare Workers Static Assets.
 - **Properties**:
   - `next.config.js` uses `output: 'export'` and `trailingSlash: true`
-  - Supports GitHub Pages project sites via `NEXT_PUBLIC_BASE_PATH` (usually `/<repo>`)
+  - Uses an empty `NEXT_PUBLIC_BASE_PATH` at `xmtp.mx`
   - Writes build output to `out/`
-  - Includes `.nojekyll` so `_next/` assets work on Pages
+  - Uses SSG-aware `404-page` and automatic trailing-slash handling
 - **Test Criteria**:
   - [x] `npm run build` generates `out/index.html`
-  - [x] `out/.nojekyll` exists
+  - [x] All three Wrangler configurations pass a dry-run asset upload
 
-### GitHub Pages Deployment (GitHub Actions)
+### Cloudflare Frontend Deployment (GitHub Actions)
 
 - **Stability**: in-progress
-- **Description**: Deploys the static export to GitHub Pages using a GitHub Actions workflow.
+- **Description**: Deploys the static export first to an isolated staging Worker, then to the `xmtp.mx` Workers Custom Domain after approval.
 - **Properties**:
-  - Workflow: `.github/workflows/pages.yml`
-  - Builds with `NEXT_PUBLIC_BASE_PATH=/<repo>`
-  - Uses repo secrets for build-time public env vars
+  - Workflow: `.github/workflows/cloudflare-frontend.yml`
+  - `wrangler.jsonc` cannot claim the production hostname
+  - `wrangler.production-preview.jsonc` uploads immutable versions of the production Worker without a zone route
+  - Candidate versions are live-tested through unique preview aliases before exact-tag promotion
+  - `wrangler.production.jsonc` explicitly attaches only `xmtp.mx` through a one-time trigger deployment
+  - Builds with an empty base path, repository browser-config secrets, and protected deployment environments
+  - Push deployment is gated by `CLOUDFLARE_FRONTEND_AUTO_DEPLOY=true`
+  - Production targets reject non-main refs and require the protected production environments
+  - `CLOUDFLARE_FRONTEND_CUTOVER_COMPLETE` blocks the one-time bootstrap after hostname attachment
+  - Every deployment receives a commit-specific live Cloudflare-header/content smoke test
 - **Test Criteria**:
-  - [x] Workflow file exists at `.github/workflows/pages.yml`
-  - [ ] A workflow run succeeds and publishes the site
+  - [x] Staging, version-preview, and cutover configuration files exist
+  - [ ] Staging `workers.dev` deployment passes wallet/XMTP smoke tests
+  - [ ] Production preview passes the same smoke tests from `main`
+  - [ ] `https://xmtp.mx/` serves the verified production deployment
+
+### GitHub Pages Rollback
+
+- **Stability**: deprecated
+- **Description**: The former Pages workflow is retained only until the Cloudflare production deployment is verified.
+- **Properties**:
+  - `.github/workflows/pages.yml` and `public/.nojekyll` remain during cutover
+  - Removal is an explicit post-verification step in the runbook
+- **Test Criteria**:
+  - [ ] Cloudflare production is healthy before the fallback is removed
 
 ### Thirdweb Wallet Connection
 
@@ -77,21 +96,22 @@
 
 ### SMTP → XMTP Bridge Library
 
-- **Stability**: in-progress
-- **Description**: A reusable helper for forwarding inbound SMTP email payloads to XMTP (not hosted on GitHub Pages).
+- **Stability**: deprecated
+- **Description**: A legacy helper for forwarding inbound SMTP email payloads to XMTP; production delivery belongs to the separate Cloudflare relay.
 - **Properties**:
   - `bridge/inbound-email.ts` exports forwarding logic
-  - Intended to be deployed separately (Worker, serverless, etc.)
+  - It is not bundled into or executed by the static frontend
 - **Test Criteria**:
-  - [ ] A deployed bridge accepts a webhook payload and forwards to XMTP
+  - [ ] Remove after Cloudflare inbound delivery is verified end-to-end
 
-### SMTP Mail Delivery + MX Routing
+### Cloudflare Mail Relay Integration
 
-- **Stability**: planned
-- **Description**: Receive SMTP emails (e.g., `deanpierce.eth@xmtp.mx`) via MX + webhook provider, then forward to XMTP.
+- **Stability**: in-progress
+- **Description**: The separate relay receives Internet mail through Cloudflare Email Routing and delivers outbound mail through Cloudflare Email Service.
 - **Properties**:
-  - Requires DNS + an inbound email provider (Mailgun/SendGrid/etc.)
-  - Requires a hosted bridge endpoint (not GitHub Pages)
+  - The browser wire formats and address mapping remain unchanged
+  - Mail, Queue, D1, Container, and secret configuration is owned by `pierce403/xmtp.mx-relay`
+  - No relay secret or privileged endpoint is exposed by this static Worker
 - **Test Criteria**:
   - [ ] Sending an email to `*.@xmtp.mx` results in an XMTP message to the mapped peer
-
+  - [ ] An allowlisted XMTP sender receives `email.send.result.v1` after outbound delivery

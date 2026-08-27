@@ -36,23 +36,44 @@ Then open `http://localhost:3000`.
 npm run preview
 ```
 
-## GitHub Pages (static)
+## Cloudflare Workers Static Assets
 
-This repo is configured for a static export (`next.config.js` uses `output: 'export'`) and deploys to GitHub Pages via `.github/workflows/pages.yml`.
+This repo remains a static export (`next.config.js` uses `output: 'export'`),
+but the canonical hosting target is Cloudflare Workers Static Assets. The
+production export is served from the domain root, so
+`NEXT_PUBLIC_BASE_PATH` must be empty.
 
-Setup:
+Build and validate the staged Worker locally:
 
-1. In your repo settings, set **Pages → Build and deployment → Source** to **GitHub Actions**
-2. Add repo secrets (optional but recommended):
-   - `NEXT_PUBLIC_THIRDWEB_CLIENT_ID`
-   - `NEXT_PUBLIC_MAINNET_RPC_URL`
-3. Push to `main` (or run the workflow manually)
+```bash
+npm ci
+NEXT_PUBLIC_BASE_PATH= npm run build
+npm run cloudflare:dry-run:staging
+```
 
-Note: GitHub Pages is static hosting, so there are **no** Next.js API routes in this build.
+`wrangler.jsonc` deploys an isolated `workers.dev` staging Worker.
+`wrangler.production-preview.jsonc` uploads immutable versions of the
+route-free production Worker; each candidate is tested through a version
+preview alias. `wrangler.production.jsonc` is applied only with
+`wrangler triggers deploy` to attach the `xmtp.mx` Custom Domain during the
+approved initial cutover. See
+[`docs/cloudflare-frontend.md`](docs/cloudflare-frontend.md) for credentials,
+GitHub Environments, smoke tests, cutover, and rollback.
+
+The Cloudflare workflow always validates pushes but deployment is manual until
+the staging and production smoke tests pass. After cutover, it promotes only
+the exact version tested at the preview alias. The previous GitHub Pages
+workflow remains temporarily as a rollback path; it should be removed only
+after Cloudflare production is verified.
+
+Workers Static Assets is static hosting, so there are **no** Next.js API routes
+or runtime secrets in this build.
 
 ## SMTP → XMTP bridge (WIP)
 
-GitHub Pages can’t run a webhook, but the forwarding logic is kept in `bridge/inbound-email.ts` so you can deploy it separately (Cloudflare Worker, a tiny Node server, etc).
+The static frontend does not run email handlers. The forwarding helper in
+`bridge/inbound-email.ts` is retained for compatibility; production mail and
+XMTP relay logic belongs in the separately deployed relay architecture.
 
 ### How address mapping works
 

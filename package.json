@@ -7,7 +7,14 @@
     "build": "next build",
     "start": "node scripts/serve-static.mjs",
     "preview": "npm run build && npm run start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cloudflare:dry-run:staging": "npx --yes wrangler@4.126.0 deploy --dry-run --config wrangler.jsonc",
+    "cloudflare:dry-run:production-candidate": "npx --yes wrangler@4.126.0 versions upload --dry-run --config wrangler.production-preview.jsonc",
+    "cloudflare:dry-run:production": "npx --yes wrangler@4.126.0 deploy --dry-run --config wrangler.production.jsonc",
+    "cloudflare:deploy:staging": "npx --yes wrangler@4.126.0 deploy --config wrangler.jsonc",
+    "cloudflare:bootstrap:production": "npx --yes wrangler@4.126.0 deploy --config wrangler.production-preview.jsonc",
+    "cloudflare:upload:production": "npx --yes wrangler@4.126.0 versions upload --config wrangler.production-preview.jsonc",
+    "cloudflare:cutover:production": "npx --yes wrangler@4.126.0 triggers deploy --config wrangler.production.jsonc"
   },
   "dependencies": {
     "@xmtp/browser-sdk": "^5.3.0",

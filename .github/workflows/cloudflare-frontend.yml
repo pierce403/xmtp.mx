@@ -1,0 +1,318 @@
+name: Deploy frontend to Cloudflare
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/cloudflare-frontend.yml'
+      - 'app/**'
+      - 'lib/**'
+      - 'public/**'
+      - 'scripts/verify-cloudflare-deployment.mjs'
+      - 'next.config.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'postcss.config.mjs'
+      - 'tailwind.config.ts'
+      - 'tsconfig.json'
+      - 'wrangler.jsonc'
+      - 'wrangler.production-preview.jsonc'
+      - 'wrangler.production.jsonc'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Stage, bootstrap production, release a version, or attach xmtp.mx
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production-bootstrap
+          - production-release
+          - cutover
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DEPLOY_TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.target || 'production-release' }}
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_BASE_PATH: ''
+      NEXT_PUBLIC_THIRDWEB_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_THIRDWEB_CLIENT_ID }}
+      NEXT_PUBLIC_MAINNET_RPC_URL: ${{ secrets.NEXT_PUBLIC_MAINNET_RPC_URL }}
+      NEXT_PUBLIC_XMTP_ENV: production
+    outputs:
+      target: ${{ steps.target.outputs.value }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Record target
+        id: target
+        run: echo "value=$DEPLOY_TARGET" >> "$GITHUB_OUTPUT"
+
+      - name: Require production settings and branch
+        run: |
+          if [ -z "$NEXT_PUBLIC_THIRDWEB_CLIENT_ID" ]; then
+            echo 'NEXT_PUBLIC_THIRDWEB_CLIENT_ID is required for every deployable build.' >&2
+            exit 1
+          fi
+          if [ "$DEPLOY_TARGET" != 'staging' ] && [ "$GITHUB_REF" != 'refs/heads/main' ]; then
+            echo 'Production bootstrap, release, and cutover must run from refs/heads/main.' >&2
+            exit 1
+          fi
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build static export at the domain root
+        run: npm run build
+
+      - name: Stamp Cloudflare-only deployment marker
+        run: printf '%s\n' "$GITHUB_SHA" > out/cloudflare-deployment.txt
+
+      - name: Validate staging bundle
+        run: npx --yes wrangler@4.126.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Validate production candidate bundle
+        run: npx --yes wrangler@4.126.0 versions upload --dry-run --config wrangler.production-preview.jsonc
+
+      - name: Validate production trigger configuration
+        run: npx --yes wrangler@4.126.0 deploy --dry-run --config wrangler.production.jsonc
+
+      - name: Upload immutable build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-${{ github.sha }}
+          path: out
+          if-no-files-found: error
+          retention-days: 7
+
+  staging:
+    needs: validate
+    if: (github.event_name == 'workflow_dispatch' || vars.CLOUDFLARE_FRONTEND_AUTO_DEPLOY == 'true') && needs.validate.outputs.target == 'staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: cloudflare-staging
+    concurrency:
+      group: cloudflare-frontend-staging
+      cancel-in-progress: true
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SMOKE_URL: ${{ vars.CLOUDFLARE_FRONTEND_SMOKE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Download validated build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-${{ github.sha }}
+          path: out
+
+      - name: Deploy staging Worker
+        run: npx --yes wrangler@4.126.0 deploy --config wrangler.jsonc
+
+      - name: Inspect deployment status
+        run: npx --yes wrangler@4.126.0 deployments status --config wrangler.jsonc
+
+      - name: Verify deployed commit
+        run: node scripts/verify-cloudflare-deployment.mjs "$SMOKE_URL" "$GITHUB_SHA"
+
+  production_bootstrap:
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && needs.validate.outputs.target == 'production-bootstrap' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: cloudflare-production-preview
+    concurrency:
+      group: cloudflare-frontend-production
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CUTOVER_COMPLETE: ${{ vars.CLOUDFLARE_FRONTEND_CUTOVER_COMPLETE }}
+      SMOKE_URL: ${{ vars.CLOUDFLARE_FRONTEND_SMOKE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Refuse bootstrap after cutover
+        run: |
+          if [ "$CUTOVER_COMPLETE" = 'true' ]; then
+            echo 'The production Worker is already routed; full bootstrap deploy is forbidden.' >&2
+            exit 1
+          fi
+
+      - name: Download validated build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-${{ github.sha }}
+          path: out
+
+      - name: Bootstrap route-free production Worker
+        run: npx --yes wrangler@4.126.0 deploy --config wrangler.production-preview.jsonc
+
+      - name: Inspect deployment status
+        run: npx --yes wrangler@4.126.0 deployments status --config wrangler.production-preview.jsonc
+
+      - name: Verify bootstrapped production Worker
+        run: node scripts/verify-cloudflare-deployment.mjs "$SMOKE_URL" "$GITHUB_SHA"
+
+  production_candidate:
+    needs: validate
+    if: (github.event_name == 'workflow_dispatch' || vars.CLOUDFLARE_FRONTEND_AUTO_DEPLOY == 'true') && contains(fromJSON('["production-release", "cutover"]'), needs.validate.outputs.target) && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: cloudflare-production-preview
+    concurrency:
+      group: cloudflare-frontend-candidate
+      cancel-in-progress: true
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_WORKERS_SUBDOMAIN: ${{ vars.CLOUDFLARE_WORKERS_SUBDOMAIN }}
+    outputs:
+      version_tag: ${{ steps.candidate.outputs.version_tag }}
+      preview_url: ${{ steps.candidate.outputs.preview_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Download validated build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-${{ github.sha }}
+          path: out
+
+      - name: Compute immutable candidate identity
+        id: candidate
+        run: |
+          if [ -z "$CLOUDFLARE_WORKERS_SUBDOMAIN" ]; then
+            echo 'CLOUDFLARE_WORKERS_SUBDOMAIN is required for production preview URLs.' >&2
+            exit 1
+          fi
+          short_sha="${GITHUB_SHA:0:8}"
+          version_tag="sha-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          preview_alias="candidate-${short_sha}-${GITHUB_RUN_ATTEMPT}"
+          preview_url="https://${preview_alias}-xmtp-mx-frontend.${CLOUDFLARE_WORKERS_SUBDOMAIN}.workers.dev"
+          echo "version_tag=$version_tag" >> "$GITHUB_OUTPUT"
+          echo "preview_alias=$preview_alias" >> "$GITHUB_OUTPUT"
+          echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
+
+      - name: Upload candidate without changing live traffic
+        run: |
+          npx --yes wrangler@4.126.0 versions upload \
+            --config wrangler.production-preview.jsonc \
+            --tag "${{ steps.candidate.outputs.version_tag }}" \
+            --message "candidate $GITHUB_SHA" \
+            --preview-alias "${{ steps.candidate.outputs.preview_alias }}" \
+            --strict
+
+      - name: Verify immutable candidate
+        run: node scripts/verify-cloudflare-deployment.mjs "${{ steps.candidate.outputs.preview_url }}" "$GITHUB_SHA"
+
+  production_promote:
+    needs:
+      - validate
+      - production_candidate
+    if: (github.event_name == 'workflow_dispatch' || vars.CLOUDFLARE_FRONTEND_AUTO_DEPLOY == 'true') && contains(fromJSON('["production-release", "cutover"]'), needs.validate.outputs.target) && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: cloudflare-production
+    concurrency:
+      group: cloudflare-frontend-production
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CUTOVER_COMPLETE: ${{ vars.CLOUDFLARE_FRONTEND_CUTOVER_COMPLETE }}
+      DEPLOY_TARGET: ${{ needs.validate.outputs.target }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Enforce release phase
+        run: |
+          if [ "$DEPLOY_TARGET" = 'production-release' ] && [ "$CUTOVER_COMPLETE" != 'true' ]; then
+            echo 'Use the initial cutover target before ordinary production releases.' >&2
+            exit 1
+          fi
+          if [ "$DEPLOY_TARGET" = 'cutover' ] && [ "$CUTOVER_COMPLETE" = 'true' ]; then
+            echo 'The custom domain is already attached; use production-release.' >&2
+            exit 1
+          fi
+
+      - name: Promote exact tested version
+        run: |
+          npx --yes wrangler@4.126.0 versions deploy \
+            --config wrangler.production-preview.jsonc \
+            --version-tag "${{ needs.production_candidate.outputs.version_tag }}@100" \
+            --message "release $GITHUB_SHA" \
+            --yes
+
+      - name: Attach xmtp.mx only during initial cutover
+        if: env.DEPLOY_TARGET == 'cutover'
+        run: npx --yes wrangler@4.126.0 triggers deploy --config wrangler.production.jsonc
+
+      - name: Inspect active deployment
+        run: npx --yes wrangler@4.126.0 deployments status --config wrangler.production-preview.jsonc
+
+      - name: Verify live production commit
+        run: node scripts/verify-cloudflare-deployment.mjs "https://xmtp.mx" "$GITHUB_SHA"

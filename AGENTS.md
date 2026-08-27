@@ -17,7 +17,9 @@ Keep entries concrete: exact commands, file paths, and specific symptoms/errors.
 
 ## Project Overview
 
-`xmtp.mx` is a Gmail-like web UI for XMTP messaging. It’s deployed as a **static export** on GitHub Pages.
+`xmtp.mx` is a Gmail-like web UI for XMTP messaging. It is a **static export**
+whose canonical target is Cloudflare Workers Static Assets. GitHub Pages is a
+temporary rollback target during the staged migration.
 
 Key tech:
 - Next.js App Router (static export)
@@ -50,22 +52,40 @@ npm run start
 
 # Build + serve
 npm run preview
+
+# Validate Cloudflare asset/config bundles without deploying
+# (Wrangler 4.126.0 requires Node.js 22+.)
+npm run cloudflare:dry-run:staging
+npm run cloudflare:dry-run:production-candidate
+npm run cloudflare:dry-run:production
 ```
 
 ## Repo Structure
 
 - `app/`: UI (XMTP runs client-side)
 - `lib/`: shared helpers (thirdweb client, addressing, “email JSON” helpers)
-- `bridge/`: SMTP↔XMTP bridge helpers (not deployable on GitHub Pages)
-- `public/`: static assets (includes `.nojekyll` for Pages)
-- `.github/workflows/pages.yml`: GitHub Pages deployment
+- `bridge/`: legacy SMTP↔XMTP bridge helpers (not part of the static frontend)
+- `public/`: static assets (`.nojekyll` remains only for the Pages fallback)
+- `wrangler.jsonc`: isolated Cloudflare staging deployment
+- `wrangler.production-preview.jsonc`: route-free production identity for immutable version uploads
+- `wrangler.production.jsonc`: explicit production Custom Domain trigger
+- `.github/workflows/cloudflare-frontend.yml`: guarded Cloudflare deployment
+- `.github/workflows/pages.yml`: temporary GitHub Pages rollback deployment
 
 ## Conventions & Constraints
 
-- This project targets **GitHub Pages**, so the build must remain **fully static**:
+- This project targets **Workers Static Assets**, so the build must remain **fully static**:
   - Don’t add Next route handlers like `app/api/**`
   - Don’t rely on server actions or runtime secrets in the UI
-- For GitHub Pages project sites, set `NEXT_PUBLIC_BASE_PATH` to `/<repo>` during build.
+- Cloudflare production and staging builds must use an empty
+  `NEXT_PUBLIC_BASE_PATH`. Only the legacy Pages project-site fallback may set
+  it to `/<repo>`.
+- `wrangler.production.jsonc` attaches the real `xmtp.mx` hostname. Use staging,
+  then upload and smoke-test an immutable version preview before exact-tag
+  promotion. After cutover, never use a full `wrangler deploy` against
+  `xmtp-mx-frontend`; it can change live traffic without testing the same
+  version. Follow `docs/cloudflare-frontend.md` and never release from a
+  non-main ref.
 - Prefer small, surgical changes; avoid refactors that don’t advance the requested behavior.
 
 ## Known Issues & Solutions
@@ -105,3 +125,9 @@ npm run preview
 - Misses: Next’s lockfile detection can pick up a `bun.lock` in a parent dir (e.g. `/home/pierce/bun.lock`) and warn “Found multiple lockfiles”; remove/rename the parent lockfile (or build from a clean path) to avoid confusion.
 - Misses: TypeScript can error on duplicate keys when spreading an object that includes `kind`/`id` into an object literal that also sets them; strip `kind` + `id` before spreading (see `app/XMTPWebmailClient.tsx` upsert helper).
 - Misses: WalletConnect can log `Error: emitting session_request:<id> without any listeners` (from `@walletconnect/sign-client`) during thirdweb auto-connect; disable `autoConnect` on `ConnectButton` to stop the noisy auto-connect path.
+
+### 2026-08-27
+- Wins: Cloudflare Workers Static Assets accepts the complete `out/` export (1,058 files in the final verified build); staging, production-preview, and cutover Wrangler configurations pass `wrangler deploy --dry-run`.
+- Wins: Keep staging and production in separate Wrangler files so staging cannot claim `xmtp.mx`; upload production candidates with Workers Versions, verify the preview alias, and promote the exact version tag.
+- Misses: A route-free full `wrangler deploy` still updates a production Worker that already has a Custom Domain. Use it only once for bootstrap; after cutover use `versions upload`, `versions deploy`, and `triggers deploy`.
+- Misses: Wrangler initializes configured proxy handling even for `deploy --dry-run`. For a hermetic local dry run, unset `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and their lowercase variants and set `WRANGLER_SEND_METRICS=false`.
