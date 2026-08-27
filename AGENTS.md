@@ -24,8 +24,8 @@ temporary rollback target during the staged migration.
 Key tech:
 - Next.js App Router (static export)
 - Tailwind CSS
-- `thirdweb` for wallet connection
-- `@xmtp/react-sdk` + `@xmtp/xmtp-js` for messaging
+- `wagmi` + `viem` for wallet connection and direct account-bound signing
+- `@xmtp/browser-sdk` for messaging
 - `ethers` for ENS resolution
 
 ## Critical XMTP Reference (Read First)
@@ -63,7 +63,7 @@ npm run cloudflare:dry-run:production
 ## Repo Structure
 
 - `app/`: UI (XMTP runs client-side)
-- `lib/`: shared helpers (thirdweb client, addressing, “email JSON” helpers)
+- `lib/`: shared helpers (wagmi config, addressing, “email JSON” helpers)
 - `bridge/`: legacy SMTP↔XMTP bridge helpers (not part of the static frontend)
 - `public/`: static assets (`.nojekyll` remains only for the Pages fallback)
 - `wrangler.jsonc`: isolated Cloudflare staging deployment
@@ -93,7 +93,7 @@ npm run cloudflare:dry-run:production
 - XMTP/WASM + Server Components: importing XMTP code in a Server Component can break builds.
   - Keep XMTP usage in client components and load via `app/ClientOnly.tsx`.
 - GitHub Pages needs `out/.nojekyll` so `_next/` assets are served.
-- `NEXT_PUBLIC_THIRDWEB_CLIENT_ID` is baked at build time; missing/invalid values break wallet connect.
+- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is optional and baked at build time; the checked-in public fallback matches the working Converge wallet chooser.
 
 ## Collaborator Signals (Pierce)
 
@@ -138,3 +138,6 @@ npm run cloudflare:dry-run:production
 - Wins: Tailwind 4 requires `@import "tailwindcss";` in `app/globals.css`; the old Tailwind 3 `@tailwind` directives silently omitted standard utilities and produced oversized SVGs and collapsed spacing in the rendered UI.
 - Wins: `tests/e2e/frontend-ux.spec.ts` covers the landing page and demo inbox on desktop Chrome and a Pixel 7 viewport; run it with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e` when the bundled browser is unavailable.
 - Misses: A sandboxed Playwright preview can fail with `listen EPERM 0.0.0.0:3000`; rerun the same suite with permission to bind localhost rather than treating it as an application failure.
+- Wins: `converge.cv` binds external wallets directly with wagmi account-bound `signMessage`, distinguishes EOA from SCW bytecode, creates XMTP with `disableAutoRegister: true`, and registers only when `client.isRegistered()` is false. `lib/wagmiConfig.ts` and `app/WalletConnectButton.tsx` carry that focused pattern here without the larger Converge onboarding system.
+- Wins: Browser SDK 5.3.0 derives a stable default database name from environment plus inbox ID (`xmtp-<env>-<inboxId>.db3`), so reloading a wallet reuses its browser installation database instead of consuming a new XMTP installation each time.
+- Misses: Converge's pnpm overrides pair `@wagmi/connectors@5.11.2` with `@wagmi/core@2.22.1`, but npm rejects that peer mismatch. For this npm repo, the compatible Wagmi 2.16.9 pair is connectors 5.9.9 plus core 2.20.3.

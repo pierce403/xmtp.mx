@@ -2,8 +2,8 @@
 
 A Gmail-like webmail UI, but backed by the XMTP network.
 
-- Wallet connection: `thirdweb`
-- Messaging: `@xmtp/react-sdk` / `@xmtp/xmtp-js`
+- Wallet connection: `wagmi` / `viem`
+- Messaging: `@xmtp/browser-sdk`
 - “Email” payloads: JSON blobs sent over XMTP
 
 ## Local-first
@@ -11,7 +11,7 @@ A Gmail-like webmail UI, but backed by the XMTP network.
 This is a **client-only** app (static export). The UX is “local-first”:
 
 - Messages are end-to-end encrypted on the XMTP network.
-- Once fetched + decrypted, `@xmtp/react-sdk` caches conversations/messages in **browser storage** (IndexedDB via Dexie), scoped by wallet address.
+- Once fetched + decrypted, `@xmtp/browser-sdk` caches conversations/messages in its wallet/inbox-scoped browser database.
 - That local cache enables fast rendering and offline browsing (and future offline search) of previously synced messages.
 - Note: the cache contains **decrypted** message content (not additional “at rest” encryption). Clear site data to wipe it.
 
@@ -25,9 +25,9 @@ npm run dev
 
 Then open `http://localhost:3000`.
 
-### Required env
+### Browser env
 
-- `NEXT_PUBLIC_THIRDWEB_CLIENT_ID`: required for wallet connect.
+- Optional: `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` overrides the public Reown project ID used by the wallet chooser.
 - Optional (recommended): `NEXT_PUBLIC_MAINNET_RPC_URL` for ENS resolution when composing to `deanpierce.eth@xmtp.mx`.
 
 ### Preview the static export

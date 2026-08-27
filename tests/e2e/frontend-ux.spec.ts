@@ -1,12 +1,51 @@
 import { expect, test } from '@playwright/test';
 
-test.beforeEach(async ({ page }) => {
-  await page.route('https://1.rpc.thirdweb.com/**', async (route) => {
+test('an injected wallet binds to the app account and can disconnect', async ({ page }) => {
+  const address = '0x1111111111111111111111111111111111111111';
+  await page.addInitScript((walletAddress) => {
+    const listeners = new Map<string, Set<(...args: unknown[]) => void>>();
+    Object.defineProperty(window, 'ethereum', {
+      configurable: true,
+      value: {
+        isMetaMask: false,
+        request: async ({ method }: { method: string }) => {
+          if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [walletAddress];
+          if (method === 'eth_chainId') return '0x1';
+          if (method === 'wallet_getCapabilities') return {};
+          if (method === 'personal_sign') return `0x${'11'.repeat(65)}`;
+          return null;
+        },
+        on: (event: string, listener: (...args: unknown[]) => void) => {
+          const eventListeners = listeners.get(event) ?? new Set();
+          eventListeners.add(listener);
+          listeners.set(event, eventListeners);
+        },
+        removeListener: (event: string, listener: (...args: unknown[]) => void) => {
+          listeners.get(event)?.delete(listener);
+        },
+      },
+    });
+  }, address);
+  await page.route(/https:\/\/(cloudflare-eth\.com|ethereum-rpc\.publicnode\.com)\/.*/, async (route) => {
+    const request = route.request().postDataJSON() as { id?: number; method?: string } | null;
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, result: '0x1' }),
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: request?.id ?? 1,
+        result: request?.method === 'eth_getCode' ? '0x' : '0x1',
+      }),
     });
   });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Connect wallet' }).click();
+  await page.getByTestId('wallet-dialog').getByRole('button', { name: /^Injected Connect$/ }).click();
+
+  const disconnect = page.getByRole('button', { name: `Disconnect ${address}` });
+  await expect(disconnect).toBeVisible();
+  await disconnect.click();
+  await expect(page.getByRole('heading', { name: 'Your wallet has an inbox.' })).toBeVisible();
 });
 
 test('landing explains the product and opens the demo', async ({ page }) => {
@@ -15,6 +54,13 @@ test('landing explains the product and opens the demo', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Your wallet has an inbox.' })).toBeVisible();
   await expect(page.getByText('Inbox preview')).toBeVisible();
   await expect(page.getByText('No wallet needed for demo')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Connect wallet' }).click();
+  const walletDialog = page.getByTestId('wallet-dialog');
+  await expect(walletDialog).toBeVisible();
+  await expect(walletDialog.getByText('Your wallet signs XMTP identity updates directly.')).toBeVisible();
+  await walletDialog.getByRole('button', { name: 'Close wallet choices' }).click();
+  await expect(walletDialog).toBeHidden();
 
   await page.getByRole('button', { name: 'Open demo inbox' }).click();
 

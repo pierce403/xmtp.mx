@@ -2,17 +2,16 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Client, ConsentState, ConversationType, DecodedMessage, Dm, SortDirection } from '@xmtp/browser-sdk';
-import type { Identifier, IdentifierKind } from '@xmtp/browser-sdk';
+import type { Identifier, IdentifierKind, Signer } from '@xmtp/browser-sdk';
 import { ethers } from 'ethers';
-import { useActiveAccount, useActiveWallet, ConnectButton } from 'thirdweb/react';
-import { EIP1193 } from 'thirdweb/wallets';
-import { ethereum } from 'thirdweb/chains';
-import { THIRDWEB_CLIENT_ID, thirdwebAppMetadata, thirdwebClient } from '@/lib/thirdwebClient';
+import { getBytecode } from '@wagmi/core';
+import { hexToBytes } from 'viem';
+import { useAccount, useSignMessage } from 'wagmi';
+import { wagmiConfig } from '@/lib/wagmiConfig';
 import { decodeXmtpEmail, encodeXmtpEmailV1 } from '@/lib/xmtpEmail';
 import { isHexAddress, parseRecipient, shortenAddress } from '@/lib/xmtpAddressing';
 import { ThemeToggle } from './ThemeContext';
-
-type ThirdwebClientIdStatus = 'missing' | 'checking' | 'valid' | 'invalid';
+import { WalletConnectButton } from './WalletConnectButton';
 
 type StartupStatusTone = 'ok' | 'pending' | 'error' | 'neutral';
 
@@ -44,7 +43,7 @@ const WELCOME_MESSAGE: Omit<WelcomeConversationSummary, 'kind' | 'id'> = {
   subject: 'Welcome to xmtp.mx',
   preview: 'Here’s what this XMTP inbox does and how to try it out.',
   body:
-    'Hi there,\n\nThanks for opening xmtp.mx — a Gmail-inspired inbox that speaks the XMTP messaging network.\n\nWhen you connect a wallet, we generate an XMTP identity tied to your address and render conversations like email threads. Messages are encrypted end-to-end and stay on XMTP; there is no central inbox server here.\n\nYou can send to onchain addresses or ENS names (e.g. deanpierce.eth). SMTP delivery is on the roadmap, but today you’ll want to message XMTP peers.\n\nIf something looks off, try refreshing after connecting your wallet or double-checking your thirdweb client ID.\n\nHave fun, and thanks for testing!',
+    'Hi there,\n\nThanks for opening xmtp.mx — a Gmail-inspired inbox that speaks the XMTP messaging network.\n\nWhen you connect a wallet, it signs XMTP identity updates directly and this browser becomes one of your XMTP installations. Messages are encrypted end-to-end and stay on XMTP; there is no central inbox server here.\n\nYou can send to onchain addresses or ENS names (e.g. deanpierce.eth). SMTP delivery is on the roadmap, but today you’ll want to message XMTP peers.\n\nHave fun, and thanks for testing!',
   timestamp: new Date(),
 };
 
@@ -155,9 +154,6 @@ function StartupStatusPanel({
   hasActiveWallet,
   isLoading,
   isWasmInitialized,
-  thirdwebClient,
-  thirdwebClientIdError,
-  thirdwebClientIdStatus,
   wasmError,
   wasmInitStalled,
   xmtpEnv,
@@ -170,23 +166,11 @@ function StartupStatusPanel({
   hasActiveWallet: boolean;
   isLoading: boolean;
   isWasmInitialized: boolean;
-  thirdwebClient: boolean;
-  thirdwebClientIdError: string | null;
-  thirdwebClientIdStatus: ThirdwebClientIdStatus;
   wasmError: string | null;
   wasmInitStalled: boolean;
   xmtpEnv: 'local' | 'dev' | 'production';
   xmtpInitStalled: boolean;
 }) {
-  const thirdwebLabel =
-    thirdwebClientIdStatus === 'valid'
-      ? 'Valid'
-      : thirdwebClientIdStatus === 'checking'
-        ? 'Checking…'
-        : thirdwebClientIdStatus === 'missing'
-          ? 'Missing'
-          : `Invalid${thirdwebClientIdError ? ` (${thirdwebClientIdError})` : ''}`;
-
   const items = [
     { label: 'Environment', value: xmtpEnv, tone: 'neutral' as const },
     {
@@ -199,17 +183,6 @@ function StartupStatusPanel({
             ? 'Loading (taking longer than usual)'
             : 'Loading',
       tone: wasmError ? ('error' as const) : isWasmInitialized ? ('ok' as const) : ('pending' as const),
-    },
-    { label: 'thirdweb client', value: thirdwebClient ? 'Ready' : 'Missing', tone: thirdwebClient ? ('ok' as const) : ('error' as const) },
-    {
-      label: 'thirdweb client ID',
-      value: thirdwebLabel,
-      tone:
-        thirdwebClientIdStatus === 'valid'
-          ? ('ok' as const)
-          : thirdwebClientIdStatus === 'invalid'
-            ? ('error' as const)
-            : ('pending' as const),
     },
     {
       label: 'Wallet',
@@ -238,9 +211,6 @@ function StartupStatusPanel({
       JSON.stringify(
         {
           xmtpEnv,
-          thirdwebClient,
-          thirdwebClientIdStatus,
-          thirdwebClientIdError,
           activeAddress: activeAddress ?? null,
           activeWallet: hasActiveWallet,
           wasmReady: isWasmInitialized,
@@ -264,9 +234,6 @@ function StartupStatusPanel({
       hasActiveWallet,
       isLoading,
       isWasmInitialized,
-      thirdwebClient,
-      thirdwebClientIdError,
-      thirdwebClientIdStatus,
       wasmError,
       wasmInitStalled,
       xmtpEnv,
@@ -309,50 +276,6 @@ function StartupStatusPanel({
           {diagnosticsText}
         </pre>
       </details>
-    </div>
-  );
-}
-
-function ThirdwebClientIdBanner({
-  status,
-  error,
-}: {
-  status: ThirdwebClientIdStatus;
-  error: string | null;
-}) {
-  if (status !== 'missing' && status !== 'invalid') return null;
-
-  return (
-    <div className="sticky top-0 z-[60] border-b border-red-700/40 bg-red-600 text-white">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="text-sm font-semibold">
-            {status === 'missing' ? 'Missing thirdweb client ID' : 'Invalid thirdweb client ID'}
-          </div>
-          <div className="mt-0.5 text-xs text-white/90">
-            {status === 'missing' ? (
-              <>
-                Set <code className="rounded bg-white/15 px-1 py-0.5">NEXT_PUBLIC_THIRDWEB_CLIENT_ID</code> and rebuild
-                (Cloudflare: update the GitHub Actions secret and redeploy).
-              </>
-            ) : (
-              <>
-                thirdweb RPC rejected the client ID{error ? ` (${error})` : ''}. Check the value and redeploy.
-              </>
-            )}
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <a
-            className="inline-flex items-center justify-center rounded-lg bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20"
-            href="https://thirdweb.com/create-api-key"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Get a key
-          </a>
-        </div>
-      </div>
     </div>
   );
 }
@@ -561,10 +484,6 @@ const XMTPWebmailClient: React.FC = () => {
   const [wasmError, setWasmError] = useState<string | null>(null);
   const [wasmInitStalled, setWasmInitStalled] = useState(false);
   const [xmtpInitStalled, setXmtpInitStalled] = useState(false);
-  const [thirdwebClientIdStatus, setThirdwebClientIdStatus] = useState<ThirdwebClientIdStatus>(() =>
-    (THIRDWEB_CLIENT_ID ?? '').trim() ? 'checking' : 'missing',
-  );
-  const [thirdwebClientIdError, setThirdwebClientIdError] = useState<string | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTo, setComposeTo] = useState('');
   const [composeSubject, setComposeSubject] = useState('');
@@ -590,8 +509,8 @@ const XMTPWebmailClient: React.FC = () => {
 
   const xmtpEnv = (process.env.NEXT_PUBLIC_XMTP_ENV ?? 'production') as 'local' | 'dev' | 'production';
 
-  const activeAccount = useActiveAccount();
-  const activeWallet = useActiveWallet();
+  const { address: activeAddress, chainId: activeChainId, isConnected: hasActiveWallet } = useAccount();
+  const { signMessageAsync } = useSignMessage();
 
   const debugEnabled = useMemo(() => {
     if (process.env.NEXT_PUBLIC_DEBUG === '1') return true;
@@ -813,8 +732,6 @@ const XMTPWebmailClient: React.FC = () => {
     [debugEnabled],
   );
 
-  const activeAddress = activeAccount?.address;
-  const hasActiveWallet = Boolean(activeWallet);
   const clientAddress = useMemo(() => {
     const identifier = xmtpClient?.accountIdentifier;
     if (identifier?.identifierKind === ETHEREUM_IDENTIFIER_KIND) return identifier.identifier;
@@ -829,9 +746,6 @@ const XMTPWebmailClient: React.FC = () => {
   useEffect(() => {
     debug('state', {
       xmtpEnv,
-      thirdwebClient: Boolean(thirdwebClient),
-      thirdwebClientIdStatus,
-      thirdwebClientIdError,
       activeAddress,
       hasActiveWallet,
       wasmReady: isWasmInitialized,
@@ -850,8 +764,6 @@ const XMTPWebmailClient: React.FC = () => {
     hasActiveWallet,
     isWasmInitialized,
     wasmInitStalled,
-    thirdwebClientIdError,
-    thirdwebClientIdStatus,
     wasmError,
     xmtpInitStalled,
     xmtpEnv,
@@ -859,69 +771,6 @@ const XMTPWebmailClient: React.FC = () => {
     xmtpLoading,
     conversationsById,
   ]);
-
-  useEffect(() => {
-    const clientId = (THIRDWEB_CLIENT_ID ?? '').trim();
-    if (!clientId) {
-      setThirdwebClientIdStatus('missing');
-      setThirdwebClientIdError(null);
-      debug('thirdweb client ID missing; wallet connect disabled');
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const validate = async () => {
-      setThirdwebClientIdStatus('checking');
-      setThirdwebClientIdError(null);
-      debug('validating thirdweb client ID');
-
-      try {
-        const res = await fetch(`https://1.rpc.thirdweb.com/${clientId}`, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: 1,
-            method: 'eth_chainId',
-            params: [],
-          }),
-          signal: controller.signal,
-        });
-
-        if (!res.ok) {
-          const text = await res.text().catch(() => '');
-          setThirdwebClientIdStatus('invalid');
-          setThirdwebClientIdError(text ? `HTTP ${res.status}: ${text.trim()}` : `HTTP ${res.status}`);
-          debug('thirdweb client ID invalid', { status: res.status, body: text.trim() || '(empty)' });
-          return;
-        }
-
-        const json = (await res.json().catch(() => null)) as null | { result?: string; error?: { message?: string } };
-        if (json?.result) {
-          setThirdwebClientIdStatus('valid');
-          setThirdwebClientIdError(null);
-          debug('thirdweb client ID valid');
-          return;
-        }
-
-        setThirdwebClientIdStatus('invalid');
-        setThirdwebClientIdError(json?.error?.message ?? 'Unexpected response');
-        debug('thirdweb client ID invalid (unexpected response)', json);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        setThirdwebClientIdStatus('invalid');
-        setThirdwebClientIdError(err instanceof Error ? err.message : 'Network error');
-        debug('thirdweb client ID validation network error', err);
-      }
-    };
-
-    void validate();
-
-    return () => controller.abort();
-  }, [debug]);
 
   useEffect(() => {
     const init = async () => {
@@ -1089,11 +938,7 @@ const XMTPWebmailClient: React.FC = () => {
   );
 
   const initializeXmtpClient = useCallback(async () => {
-    if (!thirdwebClient) {
-      debug('XMTP init skipped: missing thirdweb client');
-      return;
-    }
-    if (!activeWallet) {
+    if (!hasActiveWallet || !activeAddress) {
       debug('XMTP init skipped: missing active wallet');
       return;
     }
@@ -1116,38 +961,75 @@ const XMTPWebmailClient: React.FC = () => {
       setXmtpInitStalled(false);
       setXmtpLoading(true);
       setXmtpError(null);
-      const chain = activeWallet.getChain() ?? ethereum;
-      debug('XMTP init starting', { env: xmtpEnv, chainId: chain.id, chainName: chain.name });
-      const eip1193Provider = EIP1193.toProvider({
-        wallet: activeWallet,
-        chain,
-        client: thirdwebClient,
+      const inspectionChainIds = Array.from(
+        new Set(
+          [activeChainId, 8453].filter(
+            (chainId): chainId is 1 | 8453 | 84532 =>
+              chainId === 1 || chainId === 8453 || chainId === 84532,
+          ),
+        ),
+      );
+      const inspections = await Promise.all(
+        inspectionChainIds.map(async (chainId) => {
+          try {
+            const bytecode = await getBytecode(wagmiConfig, {
+              address: activeAddress,
+              chainId,
+            });
+            return { chainId, bytecode };
+          } catch (error) {
+            debug('wallet bytecode inspection failed', { chainId, error });
+            return null;
+          }
+        }),
+      );
+      const successfulInspections = inspections.filter(
+        (inspection): inspection is NonNullable<typeof inspection> => Boolean(inspection),
+      );
+      if (successfulInspections.length === 0) {
+        throw new Error('Could not inspect this wallet account. Check your network connection and try again.');
+      }
+      const smartAccount = successfulInspections.find(({ bytecode }) => {
+        const normalized = bytecode?.trim() ?? '';
+        const isEip7702Delegation = /^0xef0100[0-9a-f]{40}$/i.test(normalized);
+        return Boolean(normalized && normalized !== '0x' && !isEip7702Delegation);
       });
-
-      const provider = new ethers.BrowserProvider(eip1193Provider as ethers.Eip1193Provider);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
+      const walletType = smartAccount ? 'SCW' as const : 'EOA' as const;
+      const signerChainId = smartAccount?.chainId ?? activeChainId;
+      if (walletType === 'SCW' && !signerChainId) {
+        throw new Error('Reconnect the smart account on its network before continuing.');
+      }
+      debug('XMTP init starting', { env: xmtpEnv, chainId: signerChainId, walletType });
       warnTimer = setTimeout(() => {
         setXmtpInitStalled(true);
         debug('XMTP init still pending after 10s');
       }, 10_000);
 
-      const xmtpSigner = {
-        type: 'EOA' as const,
-        getIdentifier: () => ({ identifier: address, identifierKind: ETHEREUM_IDENTIFIER_KIND }),
+      const signerBase = {
+        getIdentifier: () => ({ identifier: activeAddress, identifierKind: ETHEREUM_IDENTIFIER_KIND }),
         signMessage: async (message: string) => {
-          const signature = await signer.signMessage(message);
-          return ethers.getBytes(signature);
+          const signature = await signMessageAsync({ message, account: activeAddress });
+          return hexToBytes(signature);
         },
       };
+      const xmtpSigner: Signer = walletType === 'SCW'
+        ? { ...signerBase, type: 'SCW', getChainId: () => BigInt(signerChainId!) }
+        : { ...signerBase, type: 'EOA' };
 
-      const client = await Client.create(xmtpSigner, { env: xmtpEnv });
+      const client = await Client.create(xmtpSigner, {
+        env: xmtpEnv,
+        disableAutoRegister: true,
+      });
+      if (!(await client.isRegistered())) {
+        debug('registering new XMTP browser installation', { inboxId: client.inboxId });
+        await client.register();
+      }
       setXmtpClient(client);
-      debug('XMTP init resolved', { inboxId: client.inboxId, address });
+      debug('XMTP init resolved', { inboxId: client.inboxId, address: activeAddress, walletType });
       debug('XMTP init completed', { ms: Date.now() - startedAt });
       await loadConversations();
       if (client.inboxId) {
-        setInboxDetails((prev) => ({ ...prev, [client.inboxId!]: { address } }));
+        setInboxDetails((prev) => ({ ...prev, [client.inboxId!]: { address: activeAddress } }));
       }
     } catch (err) {
       console.error('Error initializing XMTP client:', err);
@@ -1159,11 +1041,14 @@ const XMTPWebmailClient: React.FC = () => {
       setXmtpLoading(false);
     }
   }, [
-    activeWallet,
+    activeAddress,
+    activeChainId,
     clientAddress,
     debug,
+    hasActiveWallet,
     isWasmInitialized,
     loadConversations,
+    signMessageAsync,
     xmtpClient,
     xmtpEnv,
     xmtpLoading,
@@ -1172,6 +1057,19 @@ const XMTPWebmailClient: React.FC = () => {
   useEffect(() => {
     void initializeXmtpClient();
   }, [initializeXmtpClient]);
+
+  useEffect(() => {
+    if (!xmtpClient) return;
+    const walletMatchesClient = Boolean(
+      activeAddress && clientAddress && activeAddress.toLowerCase() === clientAddress.toLowerCase(),
+    );
+    if (hasActiveWallet && walletMatchesClient) return;
+
+    setXmtpClient(null);
+    void Promise.resolve()
+      .then(() => xmtpClient.close())
+      .catch((error: unknown) => debug('failed to close XMTP client', error));
+  }, [activeAddress, clientAddress, debug, hasActiveWallet, xmtpClient]);
 
   useEffect(() => {
     if (!xmtpClient) {
@@ -1986,7 +1884,6 @@ const XMTPWebmailClient: React.FC = () => {
   if (wasmError) {
     return (
       <div className="min-h-dvh" style={{ background: 'var(--gradient-page)', color: 'var(--foreground)' }}>
-        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
         <div className="absolute right-4 top-4"><ThemeToggle /></div>
         <div className="flex h-dvh items-center justify-center px-6">
           <div className="max-w-lg text-center">
@@ -1994,9 +1891,6 @@ const XMTPWebmailClient: React.FC = () => {
             <div className="mt-2 text-sm" style={{ color: 'var(--foreground-muted)' }}>WebAssembly error: {wasmError}</div>
             <StartupStatusPanel
               xmtpEnv={xmtpEnv}
-              thirdwebClient={Boolean(thirdwebClient)}
-              thirdwebClientIdStatus={thirdwebClientIdStatus}
-              thirdwebClientIdError={thirdwebClientIdError}
               activeAddress={activeAddress}
               hasActiveWallet={hasActiveWallet}
               isWasmInitialized={isWasmInitialized}
@@ -2017,7 +1911,6 @@ const XMTPWebmailClient: React.FC = () => {
   if (!isWasmInitialized) {
     return (
       <div className="min-h-dvh" style={{ background: 'var(--gradient-page)', color: 'var(--foreground)' }}>
-        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
         <div className="absolute right-4 top-4"><ThemeToggle /></div>
         <div className="flex h-dvh items-center justify-center px-6 text-center">
           <div>
@@ -2025,9 +1918,6 @@ const XMTPWebmailClient: React.FC = () => {
             <div className="mt-2 text-sm" style={{ color: 'var(--foreground-muted)' }}>Initializing security module…</div>
             <StartupStatusPanel
               xmtpEnv={xmtpEnv}
-              thirdwebClient={Boolean(thirdwebClient)}
-              thirdwebClientIdStatus={thirdwebClientIdStatus}
-              thirdwebClientIdError={thirdwebClientIdError}
               activeAddress={activeAddress}
               hasActiveWallet={hasActiveWallet}
               isWasmInitialized={isWasmInitialized}
@@ -2045,41 +1935,9 @@ const XMTPWebmailClient: React.FC = () => {
     );
   }
 
-  if (!thirdwebClient) {
-    return (
-      <div className="min-h-dvh" style={{ background: 'var(--gradient-page)', color: 'var(--foreground)' }}>
-        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
-        <div className="absolute right-4 top-4"><ThemeToggle /></div>
-        <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>xmtp.mx</h1>
-          <p className="max-w-md text-sm" style={{ color: 'var(--foreground-muted)' }}>
-            Wallet connect is disabled because the thirdweb client ID is missing.
-          </p>
-          <StartupStatusPanel
-            xmtpEnv={xmtpEnv}
-            thirdwebClient={Boolean(thirdwebClient)}
-            thirdwebClientIdStatus={thirdwebClientIdStatus}
-            thirdwebClientIdError={thirdwebClientIdError}
-            activeAddress={activeAddress}
-            hasActiveWallet={hasActiveWallet}
-            isWasmInitialized={isWasmInitialized}
-            wasmInitStalled={wasmInitStalled}
-            wasmError={wasmError}
-            isLoading={xmtpLoading}
-            xmtpInitStalled={xmtpInitStalled}
-            clientError={xmtpError ?? undefined}
-            clientAddress={clientAddress}
-            conversationsCount={xmtpConversationList.length}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (!activeAccount) {
+  if (!hasActiveWallet || !activeAddress) {
     return (
       <div className="hero-metallic min-h-dvh text-white">
-        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
         <div className="absolute right-4 top-4 z-20"><ThemeToggle /></div>
 
         <div className="relative mx-auto flex min-h-dvh max-w-6xl flex-col justify-center px-6 py-12">
@@ -2121,7 +1979,7 @@ const XMTPWebmailClient: React.FC = () => {
 
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="rounded-full bg-white/90 px-2 py-1 text-sm font-semibold text-slate-900 shadow-lg ring-1 ring-white/30">
-                    <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} autoConnect={false} />
+                    <WalletConnectButton />
                   </div>
                   <button
                     type="button"
@@ -2192,13 +2050,13 @@ const XMTPWebmailClient: React.FC = () => {
   if (!xmtpClient) {
     return (
       <div className="min-h-dvh" style={{ background: 'var(--gradient-page)', color: 'var(--foreground)' }}>
-        <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
         <div className="absolute right-4 top-4"><ThemeToggle /></div>
         <div className="flex h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
           <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>xmtp.mx</h1>
           <p className="text-sm" style={{ color: 'var(--foreground-muted)' }}>
-            {!activeWallet ? 'Waiting for wallet provider…' : xmtpLoading ? 'Initializing XMTP…' : xmtpError ? 'XMTP failed.' : 'Initializing XMTP…'}
+            {xmtpLoading ? 'Binding this browser to your XMTP identity…' : xmtpError ? 'XMTP failed.' : 'Initializing XMTP…'}
           </p>
+          <WalletConnectButton />
           {xmtpError ? <p className="max-w-md text-sm" style={{ color: 'var(--accent-error)' }}>{xmtpError}</p> : null}
           {xmtpError ? (
             <button
@@ -2206,16 +2064,13 @@ const XMTPWebmailClient: React.FC = () => {
               className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
               style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-md)' }}
               onClick={() => void initializeXmtpClient()}
-              disabled={!activeWallet || !isWasmInitialized || xmtpLoading}
+              disabled={!hasActiveWallet || !isWasmInitialized || xmtpLoading}
             >
               Try again
             </button>
           ) : null}
           <StartupStatusPanel
             xmtpEnv={xmtpEnv}
-            thirdwebClient={Boolean(thirdwebClient)}
-            thirdwebClientIdStatus={thirdwebClientIdStatus}
-            thirdwebClientIdError={thirdwebClientIdError}
             activeAddress={activeAddress}
             hasActiveWallet={hasActiveWallet}
             isWasmInitialized={isWasmInitialized}
@@ -2235,7 +2090,6 @@ const XMTPWebmailClient: React.FC = () => {
 
   return (
     <div className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]" style={{ background: 'var(--gradient-page)' }}>
-      <ThirdwebClientIdBanner status={thirdwebClientIdStatus} error={thirdwebClientIdError} />
       <div className="mx-auto flex h-full max-w-6xl flex-col gap-4 px-4 pb-6 pt-4 lg:px-8">
         <header className="flex flex-col gap-3 rounded-3xl px-5 py-4 shadow-xl sm:flex-row sm:items-center sm:justify-between backdrop-blur-md" style={{ background: 'var(--header-bg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-subtle)' }}>
           <div className="flex items-center gap-3">
@@ -2269,7 +2123,7 @@ const XMTPWebmailClient: React.FC = () => {
               <span className="h-2 w-2 rounded-full" style={{ background: 'var(--status-online)' }} /> XMTP {xmtpEnv}
             </div>
             <ThemeToggle />
-            <ConnectButton client={thirdwebClient} appMetadata={thirdwebAppMetadata} chain={ethereum} autoConnect={false} />
+            <WalletConnectButton compact />
           </div>
         </header>
 

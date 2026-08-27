@@ -42,7 +42,7 @@ Set `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` as secrets in each
 applicable environment. Set the existing browser build values as repository
 secrets because the validation job builds before entering an environment:
 
-- `NEXT_PUBLIC_THIRDWEB_CLIENT_ID` (required)
+- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` (optional; overrides the public browser project ID)
 - `NEXT_PUBLIC_MAINNET_RPC_URL` (recommended)
 
 Set these environment or repository variables:
@@ -107,7 +107,7 @@ Verify the printed `workers.dev` URL:
 
 1. `/`, `favicon.ico`, and referenced `/_next/static/` assets return 200.
 2. Missing paths return the exported 404 page.
-3. A wallet connects with the production thirdweb client ID.
+3. An EOA and a smart account connect through the wagmi wallet chooser and bind to their existing XMTP inboxes.
 4. The existing XMTP inbox loads; compose, reply, refresh, and direct routes
    work.
 5. Fonts, WebAssembly assets, PWA metadata, and offline cached behavior match

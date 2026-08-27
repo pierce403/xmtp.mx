@@ -46,17 +46,20 @@
 - **Test Criteria**:
   - [ ] Cloudflare production is healthy before the fallback is removed
 
-### Thirdweb Wallet Connection
+### Direct Wallet Identity Binding
 
 - **Stability**: in-progress
-- **Description**: Connects a user wallet via thirdweb and uses it to initialize XMTP.
+- **Description**: Connects wallets with wagmi and binds the browser installation directly to the wallet-controlled XMTP inbox.
 - **Properties**:
-  - Uses `ThirdwebProvider` + `ConnectButton`
-  - Requires `NEXT_PUBLIC_THIRDWEB_CLIENT_ID` (baked at build time)
-  - Shows a prominent banner when the client ID is missing or rejected by thirdweb RPC
+  - Uses injected, MetaMask, Coinbase, and WalletConnect/Reown connectors
+  - Detects EOA versus smart-contract wallet bytecode across the active chain and Base
+  - Creates XMTP with `disableAutoRegister: true`, then registers only an unregistered browser installation
+  - Closes the XMTP client when the wallet disconnects or changes accounts
 - **Test Criteria**:
-  - [ ] With a valid `NEXT_PUBLIC_THIRDWEB_CLIENT_ID`, the Connect button opens and completes a connection
-  - [ ] With a missing/invalid client ID, the banner renders at the top
+  - [x] Playwright proves the wallet chooser opens on desktop/mobile
+  - [x] Playwright binds a mocked injected wallet to the app account and disconnects cleanly
+  - [ ] A physical EOA wallet signs registration and loads its existing XMTP inbox
+  - [ ] A physical smart account signs registration on its detected chain and loads its existing XMTP inbox
 
 ### XMTP Inbox UI (Gmail-like)
 
