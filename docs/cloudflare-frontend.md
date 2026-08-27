@@ -59,6 +59,31 @@ Set these environment or repository variables:
 `NEXT_PUBLIC_*` values are visible in the browser bundle. No relay private
 key, Cloudflare token, or XMTP secret belongs in this repository.
 
+## DNS prerequisite and cutover
+
+As observed on 2026-08-26, `xmtp.mx` still uses Namecheap nameservers
+`dns1.registrar-servers.com` and `dns2.registrar-servers.com`. The apex has
+only the GitHub Pages A records `185.199.109.153` and `185.199.110.153`; no
+public MX, TXT, CAA, `www`, or relay subdomain records were visible.
+
+1. Add `xmtp.mx` as a full zone in Cloudflare and let the DNS scan complete.
+2. Before changing nameservers, confirm the imported zone retains both current
+   GitHub Pages A records. They keep the old frontend serving while the
+   nameserver change propagates.
+3. Copy the exact Mailgun MX, SPF, DKIM, tracking, and verification records
+   from the Mailgun domain screen into Cloudflare. Do not guess DKIM values or
+   publish a second SPF record; merge authorized senders into one SPF record.
+   Keep mail records DNS-only unless Mailgun explicitly requires otherwise.
+4. In Namecheap, replace BasicDNS with the two nameservers Cloudflare assigns.
+5. Wait for the Cloudflare zone to become **Active**, then verify the imported
+   GitHub site and public NS, A/CNAME, MX, TXT, and CAA answers before running
+   the production Worker cutover below.
+
+The `wrangler.production.jsonc` Custom Domain trigger performs the frontend
+record change after the zone is active. Do not create `www.xmtp.mx` unless a
+`www` redirect is intentionally wanted. Do not change Mailgun's webhook route
+or create `relay.xmtp.mx` as part of the frontend cutover.
+
 ## Validation and staging
 
 Use Node.js 22 or newer:
