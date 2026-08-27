@@ -78,6 +78,8 @@ test('only the selected wallet shows a pending handoff', async ({ page }) => {
 
 test('a returned mobile wallet resumes XMTP signing even while connect is pending', async ({ page }) => {
   const address = '0x2222222222222222222222222222222222222222';
+  const pageErrors: Error[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error));
   await page.addInitScript((walletAddress) => {
     let authorized = false;
     let signRequestCount = 0;
@@ -142,6 +144,8 @@ test('a returned mobile wallet resumes XMTP signing even while connect is pendin
       { timeout: 20_000 },
     )
     .toBeGreaterThan(0);
+  await page.waitForTimeout(500);
+  expect(pageErrors).toEqual([]);
 });
 
 test('landing explains the product and opens the demo', async ({ page }) => {

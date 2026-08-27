@@ -1098,11 +1098,13 @@ const XMTPWebmailClient: React.FC = () => {
         );
         ensureCurrentAttempt();
       }
-      setXmtpClient(createdClient);
-      debug('XMTP init resolved', { inboxId: createdClient.inboxId, address: activeAddress, walletType });
+      const initializedClient = createdClient;
+      const initializedInboxId = initializedClient.inboxId;
+      setXmtpClient(initializedClient);
+      debug('XMTP init resolved', { inboxId: initializedInboxId, address: activeAddress, walletType });
       debug('XMTP init completed', { ms: Date.now() - startedAt });
-      if (createdClient.inboxId) {
-        setInboxDetails((prev) => ({ ...prev, [createdClient!.inboxId!]: { address: activeAddress } }));
+      if (initializedInboxId) {
+        setInboxDetails((prev) => ({ ...prev, [initializedInboxId]: { address: activeAddress } }));
       }
       createdClient = null;
     } catch (err) {
