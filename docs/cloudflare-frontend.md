@@ -169,3 +169,18 @@ For a Cloudflare hosting or zone incident:
 
 Frontend rollback does not change the relay, MX records, XMTP identity, mail
 state, or encrypted browser storage.
+
+## Current production state
+
+On 2026-08-27, `xmtp.mx` was attached as a Custom Domain to
+`xmtp-mx-frontend`. Cloudflare authoritative DNS replaced the two GitHub Pages
+A records with proxied Cloudflare A/AAAA answers. Production Worker version
+`0fbbf498-9599-4b01-bf70-e71c4547eff4` serves commit
+`c8e8545ce70437898498eae963d666f09906d457`.
+
+The first public verification may still reach GitHub until recursive caches
+expire. Verify authoritative DNS and the Worker directly before treating this
+as a failed cutover; in this cutover, the former A records remained in one
+local cache for about 25 minutes even though Cloudflare, Google, and Quad9
+already returned the new answers. Keep GitHub Pages as rollback until normal
+recursive resolution and clean-browser wallet/XMTP behavior are verified.
