@@ -40,6 +40,7 @@ if (walletConnectProjectId) {
 export const wagmiConfig = createConfig({
   chains: walletChains,
   connectors,
+  multiInjectedProviderDiscovery: false,
   transports: {
     [mainnet.id]: fallback([
       http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || 'https://cloudflare-eth.com'),

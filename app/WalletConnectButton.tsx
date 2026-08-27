@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { shortenAddress } from '@/lib/xmtpAddressing';
+import { useWalletSession } from './WalletSessionProvider';
 
 export function WalletConnectButton({
   compact = false,
@@ -11,10 +11,17 @@ export function WalletConnectButton({
   compact?: boolean;
   prominent?: boolean;
 }) {
-  const { address, connector, isConnected } = useAccount();
-  const { connectors, connectAsync, error, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
+  const {
+    address,
+    connector,
+    connectors,
+    isConnected,
+    pendingConnectorUid,
+    connectWallet,
+    disconnectWallet,
+  } = useWalletSession();
   const [open, setOpen] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const walletOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -25,6 +32,8 @@ export function WalletConnectButton({
       return true;
     });
   }, [connectors]);
+
+  const pendingWallet = walletOptions.find((wallet) => wallet.uid === pendingConnectorUid);
 
   useEffect(() => {
     if (!open) return;
@@ -40,7 +49,7 @@ export function WalletConnectButton({
       <button
         type="button"
         className={`${prominent ? 'btn-primary' : 'btn-nav'} whitespace-nowrap`}
-        onClick={() => disconnect()}
+        onClick={() => void disconnectWallet()}
         aria-label={`Disconnect ${address}`}
         title={`Connected with ${connector?.name ?? 'wallet'}`}
       >
@@ -98,34 +107,46 @@ export function WalletConnectButton({
             </div>
 
             <div className="mt-6 grid gap-2">
-              {walletOptions.map((wallet) => (
-                <button
-                  type="button"
-                  key={`${wallet.id}:${wallet.name}`}
-                  className="btn-nav flex min-h-12 w-full items-center justify-between px-4 py-3 text-left"
-                  aria-label={`${wallet.name} Connect`}
-                  disabled={isPending}
-                  onClick={async () => {
-                    try {
-                      await connectAsync({ connector: wallet });
-                      setOpen(false);
-                    } catch {
-                      // Wagmi exposes the connector error below.
-                    }
-                  }}
-                >
-                  <span className="flex items-center gap-3 font-semibold">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg text-xs" style={{ background: 'var(--background-subtle)', color: 'var(--primary)' }}>↗</span>
-                    {wallet.name}
-                  </span>
-                  <span className="text-xs" style={{ color: 'var(--foreground-muted)' }}>
-                    {isPending ? 'Opening…' : 'Connect'}
-                  </span>
-                </button>
-              ))}
+              {walletOptions.map((wallet) => {
+                const isOpening = pendingConnectorUid === wallet.uid;
+                return (
+                  <button
+                    type="button"
+                    key={`${wallet.id}:${wallet.name}`}
+                    className="btn-nav flex min-h-12 w-full items-center justify-between px-4 py-3 text-left"
+                    aria-label={`${wallet.name} Connect`}
+                    aria-busy={isOpening}
+                    disabled={pendingConnectorUid !== null}
+                    onClick={async () => {
+                      setConnectionError(null);
+                      try {
+                        await connectWallet(wallet);
+                        setOpen(false);
+                      } catch (error) {
+                        setConnectionError(
+                          error instanceof Error ? error.message : `Could not connect ${wallet.name}.`,
+                        );
+                      }
+                    }}
+                  >
+                    <span className="flex items-center gap-3 font-semibold">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg text-xs" style={{ background: 'var(--background-subtle)', color: 'var(--primary)' }}>↗</span>
+                      {wallet.name}
+                    </span>
+                    <span className="text-xs" style={{ color: 'var(--foreground-muted)' }}>
+                      {isOpening ? 'Waiting…' : 'Connect'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            {error ? <p role="alert" className="mt-3 text-xs" style={{ color: 'var(--accent-error)' }}>{error.message}</p> : null}
+            {pendingWallet ? (
+              <p className="mt-3 text-xs leading-relaxed" role="status" style={{ color: 'var(--foreground-muted)' }}>
+                Approve in {pendingWallet.name}, then return here. Inbox activation will continue automatically.
+              </p>
+            ) : null}
+            {connectionError ? <p role="alert" className="mt-3 text-xs" style={{ color: 'var(--accent-error)' }}>{connectionError}</p> : null}
             <p className="mt-5 border-t pt-4 text-xs leading-relaxed" style={{ borderColor: 'var(--border)', color: 'var(--foreground-subtle)' }}>
               No email, password, or custody. Your wallet address is your XMTP identity.
             </p>

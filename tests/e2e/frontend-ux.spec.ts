@@ -48,6 +48,102 @@ test('an injected wallet binds to the app account and can disconnect', async ({ 
   await expect(page.getByRole('heading', { name: 'Your wallet has an inbox.' })).toBeVisible();
 });
 
+test('only the selected wallet shows a pending handoff', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'ethereum', {
+      configurable: true,
+      value: {
+        request: async ({ method }: { method: string }) => {
+          if (method === 'eth_requestAccounts') return await new Promise(() => undefined);
+          if (method === 'eth_accounts') return [];
+          if (method === 'eth_chainId') return '0x1';
+          return null;
+        },
+        on: () => undefined,
+        removeListener: () => undefined,
+      },
+    });
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Connect wallet' }).click();
+  const walletDialog = page.getByTestId('wallet-dialog');
+  await walletDialog.getByRole('button', { name: 'Injected Connect' }).click();
+
+  await expect(walletDialog.getByRole('button', { name: 'Injected Connect' })).toContainText('Waiting…');
+  await expect(walletDialog.getByRole('button', { name: 'MetaMask Connect' })).toContainText('Connect');
+  await expect(walletDialog.getByText('Approve in Injected, then return here.')).toBeVisible();
+  await expect(walletDialog.getByText('Waiting…')).toHaveCount(1);
+});
+
+test('a returned mobile wallet resumes XMTP signing even while connect is pending', async ({ page }) => {
+  const address = '0x2222222222222222222222222222222222222222';
+  await page.addInitScript((walletAddress) => {
+    let authorized = false;
+    let signRequestCount = 0;
+    Object.assign(window, {
+      authorizeTestWallet: () => {
+        authorized = true;
+      },
+      getTestWalletSignRequestCount: () => signRequestCount,
+    });
+    Object.defineProperty(window, 'ethereum', {
+      configurable: true,
+      value: {
+        request: async ({ method }: { method: string }) => {
+          if (method === 'eth_requestAccounts') return await new Promise(() => undefined);
+          if (method === 'eth_accounts') return authorized ? [walletAddress] : [];
+          if (method === 'eth_chainId') return '0x1';
+          if (method === 'wallet_getCapabilities') return {};
+          if (method === 'personal_sign') {
+            signRequestCount += 1;
+            return `0x${'11'.repeat(65)}`;
+          }
+          return null;
+        },
+        on: () => undefined,
+        removeListener: () => undefined,
+      },
+    });
+  }, address);
+  await page.route(
+    /https:\/\/(cloudflare-eth\.com|ethereum-rpc\.publicnode\.com|mainnet\.base\.org|base-rpc\.publicnode\.com|base\.llamarpc\.com)\/.*/,
+    async (route) => {
+      const request = route.request().postDataJSON() as { id?: number; method?: string } | null;
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: request?.id ?? 1,
+          result: request?.method === 'eth_getCode' ? '0x' : '0x1',
+        }),
+      });
+    },
+  );
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Connect wallet' }).click();
+  await page.getByTestId('wallet-dialog').getByRole('button', { name: 'Injected Connect' }).click();
+  await page.evaluate(() => {
+    (window as typeof window & { authorizeTestWallet: () => void }).authorizeTestWallet();
+    window.dispatchEvent(new Event('pageshow'));
+    window.dispatchEvent(new Event('focus'));
+  });
+
+  await expect(page.getByRole('button', { name: `Disconnect ${address}` })).toBeVisible();
+  await expect
+    .poll(
+      async () =>
+        await page.evaluate(
+          () =>
+            (window as typeof window & { getTestWalletSignRequestCount: () => number })
+              .getTestWalletSignRequestCount(),
+        ),
+      { timeout: 20_000 },
+    )
+    .toBeGreaterThan(0);
+});
+
 test('landing explains the product and opens the demo', async ({ page }) => {
   await page.goto('/');
 

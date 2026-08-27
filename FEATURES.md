@@ -53,6 +53,9 @@
 - **Properties**:
   - Uses injected, MetaMask, and Coinbase connectors by default
   - Enables WalletConnect/Reown only when xmtp.mx's own `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is configured
+  - Shows pending state only on the connector that launched the wallet handoff
+  - Persists a short-lived, non-sensitive connector intent and probes that exact connector when the browser regains focus after a mobile-wallet handoff
+  - Uses the recovered connector directly for account-bound XMTP signing, even if Wagmi's original connect promise is still pending
   - Detects EOA versus smart-contract wallet bytecode across the active chain and Base
   - Creates XMTP with `disableAutoRegister: true`, then registers only an unregistered browser installation
   - Bounds wallet inspection, XMTP client creation, and registration so failures return to a retryable error state
@@ -60,6 +63,7 @@
 - **Test Criteria**:
   - [x] Playwright proves the wallet chooser opens on desktop/mobile
   - [x] Playwright binds a mocked injected wallet to the app account and disconnects cleanly
+  - [x] Playwright proves a returned mobile-wallet handoff reaches XMTP `personal_sign` while the original connect promise remains pending
   - [ ] A physical EOA wallet signs registration and loads its existing XMTP inbox
   - [ ] A physical smart account signs registration on its detected chain and loads its existing XMTP inbox
 

@@ -27,6 +27,14 @@ const nextConfig = {
 
     config.output.webassemblyModuleFilename = (isServer ? '../' : '') + 'static/wasm/[modulehash].wasm';
 
+    // @xmtp/browser-sdk runs its wasm bindings inside a Web Worker. Webpack's
+    // per-runtime used-export optimization can replace shared enum tables with
+    // null in the worker chunk, which crashes before XMTP asks the wallet to
+    // sign. Keep those shared browser exports intact across both runtimes.
+    if (!isServer) {
+      config.optimization.usedExports = false;
+    }
+
     const wasmFile = 'user_preferences_bindings_wasm_bg.wasm';
     const wasmPath = path.join(__dirname, `node_modules/@xmtp/user-preferences-bindings-wasm/dist/web/${wasmFile}`);
 

@@ -6,12 +6,12 @@ import type { Identifier, IdentifierKind, Signer } from '@xmtp/browser-sdk';
 import { ethers } from 'ethers';
 import { getBytecode } from '@wagmi/core';
 import { hexToBytes } from 'viem';
-import { useAccount, useSignMessage } from 'wagmi';
 import { wagmiConfig } from '@/lib/wagmiConfig';
 import { decodeXmtpEmail, encodeXmtpEmailV1 } from '@/lib/xmtpEmail';
 import { isHexAddress, parseRecipient, shortenAddress } from '@/lib/xmtpAddressing';
 import { ThemeToggle } from './ThemeContext';
 import { WalletConnectButton } from './WalletConnectButton';
+import { useWalletSession } from './WalletSessionProvider';
 
 type StartupStatusTone = 'ok' | 'pending' | 'error' | 'neutral';
 
@@ -528,8 +528,12 @@ const XMTPWebmailClient: React.FC = () => {
 
   const xmtpEnv = (process.env.NEXT_PUBLIC_XMTP_ENV ?? 'production') as 'local' | 'dev' | 'production';
 
-  const { address: activeAddress, chainId: activeChainId, isConnected: hasActiveWallet } = useAccount();
-  const { signMessageAsync } = useSignMessage();
+  const {
+    address: activeAddress,
+    chainId: activeChainId,
+    isConnected: hasActiveWallet,
+    signMessage,
+  } = useWalletSession();
 
   useEffect(() => {
     const normalizedAddress = activeAddress?.toLowerCase();
@@ -1054,7 +1058,7 @@ const XMTPWebmailClient: React.FC = () => {
       const signerBase = {
         getIdentifier: () => ({ identifier: activeAddress, identifierKind: ETHEREUM_IDENTIFIER_KIND }),
         signMessage: async (message: string) => {
-          const signature = await signMessageAsync({ message, account: activeAddress });
+          const signature = await signMessage(message, activeAddress);
           return hexToBytes(signature);
         },
       };
@@ -1130,7 +1134,7 @@ const XMTPWebmailClient: React.FC = () => {
     debug,
     hasActiveWallet,
     isWasmInitialized,
-    signMessageAsync,
+    signMessage,
     xmtpClient,
     xmtpEnv,
   ]);
