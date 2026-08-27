@@ -1,28 +1,29 @@
 import { createConfig, fallback, http } from '@wagmi/core';
+import type { CreateConnectorFn } from '@wagmi/core';
 import { base, baseSepolia, mainnet } from '@wagmi/core/chains';
 import { coinbaseWallet, injected, metaMask, walletConnect } from '@wagmi/connectors';
 
-const walletConnectProjectId =
-  process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ||
-  'de49d3fcfa0a614710c571a3484a4d0f';
+const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID?.trim();
 
 export const walletChains = [mainnet, base, baseSepolia] as const;
 
-export const wagmiConfig = createConfig({
-  chains: walletChains,
-  connectors: [
-    injected(),
-    metaMask({
-      dappMetadata: {
-        name: 'xmtp.mx',
-        url: 'https://xmtp.mx',
-        iconUrl: 'https://xmtp.mx/favicon.ico',
-      },
-    }),
-    coinbaseWallet({
-      appName: 'xmtp.mx',
-      preference: { options: 'all', telemetry: false },
-    }),
+const connectors: CreateConnectorFn[] = [
+  injected(),
+  metaMask({
+    dappMetadata: {
+      name: 'xmtp.mx',
+      url: 'https://xmtp.mx',
+      iconUrl: 'https://xmtp.mx/favicon.ico',
+    },
+  }),
+  coinbaseWallet({
+    appName: 'xmtp.mx',
+    preference: { options: 'all', telemetry: false },
+  }),
+];
+
+if (walletConnectProjectId) {
+  connectors.push(
     walletConnect({
       projectId: walletConnectProjectId,
       metadata: {
@@ -33,7 +34,12 @@ export const wagmiConfig = createConfig({
       },
       showQrModal: true,
     }),
-  ],
+  );
+}
+
+export const wagmiConfig = createConfig({
+  chains: walletChains,
+  connectors,
   transports: {
     [mainnet.id]: fallback([
       http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL || 'https://cloudflare-eth.com'),

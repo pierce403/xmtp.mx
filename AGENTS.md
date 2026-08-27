@@ -94,7 +94,7 @@ npm run cloudflare:dry-run:production
 - XMTP/WASM + Server Components: importing XMTP code in a Server Component can break builds.
   - Keep XMTP usage in client components and load via `app/ClientOnly.tsx`.
 - GitHub Pages needs `out/.nojekyll` so `_next/` assets are served.
-- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is optional and baked at build time; the checked-in public fallback matches the working Converge wallet chooser.
+- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is optional and baked at build time. When unset, omit WalletConnect; never reuse another app's Reown project ID because its relay/origin policy can fail asynchronously.
 
 ## Collaborator Signals (Pierce)
 
@@ -133,6 +133,7 @@ npm run cloudflare:dry-run:production
 - Wins: Verify visual changes at 1440px and 412px, then run `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e`; the suite covers responsive hierarchy, 44px primary action targets, wallet binding, navigation, search, dialogs, and viewport containment.
 - Misses: Decorative text inside a connector button changes its accessible name; set an explicit `aria-label` such as `${wallet.name} Connect` so screen-reader and Playwright locators remain stable.
 - Collaborator signal: Pierce explicitly requested “always push straight to main/prod”; after validation, publish directly to `main`, promote the exact SHA to production, and verify `https://xmtp.mx` rather than pausing at staging or an immutable preview.
+- Misses: Reusing Converge's WalletConnect project ID on xmtp.mx caused `Connection interrupted while trying to subscribe` from WalletConnect Core and left XMTP binding waiting on the broken wallet transport. Only construct the WalletConnect connector when xmtp.mx has its own `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`; bound XMTP initialization so transport failures become retryable UI errors.
 
 ### 2026-08-27
 - Wins: Cloudflare Workers Static Assets accepts the complete `out/` export (1,058 files in the final verified build); staging, production-preview, and cutover Wrangler configurations pass `wrangler deploy --dry-run`.

@@ -51,9 +51,11 @@
 - **Stability**: in-progress
 - **Description**: Connects wallets with wagmi and binds the browser installation directly to the wallet-controlled XMTP inbox.
 - **Properties**:
-  - Uses injected, MetaMask, Coinbase, and WalletConnect/Reown connectors
+  - Uses injected, MetaMask, and Coinbase connectors by default
+  - Enables WalletConnect/Reown only when xmtp.mx's own `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is configured
   - Detects EOA versus smart-contract wallet bytecode across the active chain and Base
   - Creates XMTP with `disableAutoRegister: true`, then registers only an unregistered browser installation
+  - Bounds wallet inspection, XMTP client creation, and registration so failures return to a retryable error state
   - Closes the XMTP client when the wallet disconnects or changes accounts
 - **Test Criteria**:
   - [x] Playwright proves the wallet chooser opens on desktop/mobile

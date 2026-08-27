@@ -59,6 +59,7 @@ test('landing explains the product and opens the demo', async ({ page }) => {
   const walletDialog = page.getByTestId('wallet-dialog');
   await expect(walletDialog).toBeVisible();
   await expect(walletDialog.getByText('Your wallet signs XMTP identity updates directly.')).toBeVisible();
+  await expect(walletDialog.getByRole('button', { name: 'WalletConnect Connect' })).toHaveCount(0);
   await walletDialog.getByRole('button', { name: 'Close wallet choices' }).click();
   await expect(walletDialog).toBeHidden();
 

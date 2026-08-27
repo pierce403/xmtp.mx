@@ -48,6 +48,22 @@ const WELCOME_MESSAGE: Omit<WelcomeConversationSummary, 'kind' | 'id'> = {
 };
 
 const ETHEREUM_IDENTIFIER_KIND: IdentifierKind = 'Ethereum';
+const WALLET_INSPECTION_TIMEOUT_MS = 15_000;
+const XMTP_CLIENT_INIT_TIMEOUT_MS = 45_000;
+const XMTP_REGISTRATION_TIMEOUT_MS = 45_000;
+
+async function withTimeout<T>(operation: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 // ===== DEMO MODE MOCK DATA =====
 type DemoMessage = {
@@ -506,11 +522,26 @@ const XMTPWebmailClient: React.FC = () => {
 
   const messageStreamRef = useRef<AsyncIterator<DecodedMessage> | null>(null);
   const conversationStreamRef = useRef<AsyncIterator<Dm> | null>(null);
+  const xmtpInitAttemptRef = useRef(0);
+  const xmtpInitInFlightRef = useRef<number | null>(null);
+  const previousActiveAddressRef = useRef<string | undefined>();
 
   const xmtpEnv = (process.env.NEXT_PUBLIC_XMTP_ENV ?? 'production') as 'local' | 'dev' | 'production';
 
   const { address: activeAddress, chainId: activeChainId, isConnected: hasActiveWallet } = useAccount();
   const { signMessageAsync } = useSignMessage();
+
+  useEffect(() => {
+    const normalizedAddress = activeAddress?.toLowerCase();
+    if (previousActiveAddressRef.current === normalizedAddress) return;
+
+    previousActiveAddressRef.current = normalizedAddress;
+    xmtpInitAttemptRef.current += 1;
+    xmtpInitInFlightRef.current = null;
+    setXmtpLoading(false);
+    setXmtpError(null);
+    setXmtpInitStalled(false);
+  }, [activeAddress]);
 
   const debugEnabled = useMemo(() => {
     if (process.env.NEXT_PUBLIC_DEBUG === '1') return true;
@@ -950,13 +981,22 @@ const XMTPWebmailClient: React.FC = () => {
       debug('XMTP init skipped: client already initialized', { clientAddress });
       return;
     }
-    if (xmtpLoading) {
+    if (xmtpInitInFlightRef.current !== null) {
       debug('XMTP init skipped: already initializing');
       return;
     }
 
+    const attemptId = ++xmtpInitAttemptRef.current;
+    xmtpInitInFlightRef.current = attemptId;
     const startedAt = Date.now();
     let warnTimer: ReturnType<typeof setTimeout> | undefined;
+    let createdClient: Client | null = null;
+    const ensureCurrentAttempt = () => {
+      if (attemptId !== xmtpInitAttemptRef.current) {
+        throw new Error('XMTP initialization was superseded by a wallet change.');
+      }
+    };
+
     try {
       setXmtpInitStalled(false);
       setXmtpLoading(true);
@@ -969,20 +1009,25 @@ const XMTPWebmailClient: React.FC = () => {
           ),
         ),
       );
-      const inspections = await Promise.all(
-        inspectionChainIds.map(async (chainId) => {
-          try {
-            const bytecode = await getBytecode(wagmiConfig, {
-              address: activeAddress,
-              chainId,
-            });
-            return { chainId, bytecode };
-          } catch (error) {
-            debug('wallet bytecode inspection failed', { chainId, error });
-            return null;
-          }
-        }),
+      const inspections = await withTimeout(
+        Promise.all(
+          inspectionChainIds.map(async (chainId) => {
+            try {
+              const bytecode = await getBytecode(wagmiConfig, {
+                address: activeAddress,
+                chainId,
+              });
+              return { chainId, bytecode };
+            } catch (error) {
+              debug('wallet bytecode inspection failed', { chainId, error });
+              return null;
+            }
+          }),
+        ),
+        WALLET_INSPECTION_TIMEOUT_MS,
+        'Wallet inspection timed out. Check your network connection and try again.',
       );
+      ensureCurrentAttempt();
       const successfulInspections = inspections.filter(
         (inspection): inspection is NonNullable<typeof inspection> => Boolean(inspection),
       );
@@ -1001,6 +1046,7 @@ const XMTPWebmailClient: React.FC = () => {
       }
       debug('XMTP init starting', { env: xmtpEnv, chainId: signerChainId, walletType });
       warnTimer = setTimeout(() => {
+        if (attemptId !== xmtpInitAttemptRef.current) return;
         setXmtpInitStalled(true);
         debug('XMTP init still pending after 10s');
       }, 10_000);
@@ -1016,29 +1062,66 @@ const XMTPWebmailClient: React.FC = () => {
         ? { ...signerBase, type: 'SCW', getChainId: () => BigInt(signerChainId!) }
         : { ...signerBase, type: 'EOA' };
 
-      const client = await Client.create(xmtpSigner, {
+      const clientPromise = Client.create(xmtpSigner, {
         env: xmtpEnv,
         disableAutoRegister: true,
       });
-      if (!(await client.isRegistered())) {
-        debug('registering new XMTP browser installation', { inboxId: client.inboxId });
-        await client.register();
+      void clientPromise
+        .then((lateClient) => {
+          if (attemptId !== xmtpInitAttemptRef.current) lateClient.close();
+        })
+        .catch(() => {
+          // The awaited path below reports initialization errors in the UI.
+        });
+      createdClient = await withTimeout(
+        clientPromise,
+        XMTP_CLIENT_INIT_TIMEOUT_MS,
+        'Wallet signing or XMTP connection timed out. Reopen your wallet and try again.',
+      );
+      ensureCurrentAttempt();
+      const isRegistered = await withTimeout(
+        createdClient.isRegistered(),
+        XMTP_REGISTRATION_TIMEOUT_MS,
+        'Checking this XMTP installation timed out. Check your connection and try again.',
+      );
+      ensureCurrentAttempt();
+      if (!isRegistered) {
+        debug('registering new XMTP browser installation', { inboxId: createdClient.inboxId });
+        await withTimeout(
+          createdClient.register(),
+          XMTP_REGISTRATION_TIMEOUT_MS,
+          'XMTP registration timed out. Reopen your wallet and try again.',
+        );
+        ensureCurrentAttempt();
       }
-      setXmtpClient(client);
-      debug('XMTP init resolved', { inboxId: client.inboxId, address: activeAddress, walletType });
+      setXmtpClient(createdClient);
+      debug('XMTP init resolved', { inboxId: createdClient.inboxId, address: activeAddress, walletType });
       debug('XMTP init completed', { ms: Date.now() - startedAt });
-      await loadConversations();
-      if (client.inboxId) {
-        setInboxDetails((prev) => ({ ...prev, [client.inboxId!]: { address: activeAddress } }));
+      if (createdClient.inboxId) {
+        setInboxDetails((prev) => ({ ...prev, [createdClient!.inboxId!]: { address: activeAddress } }));
       }
+      createdClient = null;
     } catch (err) {
       console.error('Error initializing XMTP client:', err);
       debug('XMTP init error', err);
       debug('XMTP init failed', { ms: Date.now() - startedAt });
-      setXmtpError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
+      if (createdClient) {
+        try {
+          createdClient.close();
+        } catch (closeError) {
+          debug('failed to close incomplete XMTP client', closeError);
+        }
+      }
+      if (attemptId === xmtpInitAttemptRef.current) {
+        xmtpInitAttemptRef.current += 1;
+        setXmtpError(err instanceof Error ? err.message : 'Failed to initialize XMTP');
+      }
     } finally {
       if (warnTimer) clearTimeout(warnTimer);
-      setXmtpLoading(false);
+      if (xmtpInitInFlightRef.current === attemptId) {
+        xmtpInitInFlightRef.current = null;
+        setXmtpLoading(false);
+      }
     }
   }, [
     activeAddress,
@@ -1047,11 +1130,9 @@ const XMTPWebmailClient: React.FC = () => {
     debug,
     hasActiveWallet,
     isWasmInitialized,
-    loadConversations,
     signMessageAsync,
     xmtpClient,
     xmtpEnv,
-    xmtpLoading,
   ]);
 
   useEffect(() => {

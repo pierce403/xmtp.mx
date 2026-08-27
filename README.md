@@ -27,7 +27,7 @@ Then open `http://localhost:3000`.
 
 ### Browser env
 
-- Optional: `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` overrides the public Reown project ID used by the wallet chooser.
+- Optional: `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` enables WalletConnect in the wallet chooser. It must belong to xmtp.mx; when unset, WalletConnect is omitted rather than borrowing another app's project ID.
 - Optional (recommended): `NEXT_PUBLIC_MAINNET_RPC_URL` for ENS resolution when composing to `deanpierce.eth@xmtp.mx`.
 
 ### Preview the static export

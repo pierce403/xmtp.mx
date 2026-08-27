@@ -42,7 +42,7 @@ Set `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` as secrets in each
 applicable environment. Set the existing browser build values as repository
 secrets because the validation job builds before entering an environment:
 
-- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` (optional; overrides the public browser project ID)
+- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` (optional; enables WalletConnect and must be registered for xmtp.mx)
 - `NEXT_PUBLIC_MAINNET_RPC_URL` (recommended)
 
 Set these environment or repository variables:
