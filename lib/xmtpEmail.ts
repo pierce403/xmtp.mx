@@ -8,8 +8,24 @@ export type XmtpEmailV1 = {
   sentAt?: number;
 };
 
+export type RelayEmailRequest = {
+  type: 'email.send.v1';
+  to: string[];
+  subject: string;
+  text: string;
+};
+
+export type RelayEmailResult = {
+  type: 'email.send.result.v1';
+  ok: boolean;
+  mailgunId?: string | null;
+  error?: string | null;
+};
+
 export type DecodedXmtpEmail =
   | { kind: 'email'; email: XmtpEmailV1 }
+  | { kind: 'relay-request'; request: RelayEmailRequest }
+  | { kind: 'relay-result'; result: RelayEmailResult }
   | { kind: 'text'; text: string };
 
 export function encodeXmtpEmailV1(input: {
@@ -40,8 +56,30 @@ export function decodeXmtpEmail(content: unknown): DecodedXmtpEmail {
   if (!trimmed) return { kind: 'text', text: '' };
 
   try {
-    const parsed = JSON.parse(trimmed) as Partial<XmtpEmailV1>;
-    if (parsed?.type !== 'email' || parsed?.v !== 1) {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    if (parsed.type === 'email.send.v1') {
+      const to = Array.isArray(parsed.to) ? parsed.to.filter((value): value is string => typeof value === 'string') : [];
+      if (to.length && typeof parsed.subject === 'string' && typeof parsed.text === 'string') {
+        return {
+          kind: 'relay-request',
+          request: { type: 'email.send.v1', to, subject: parsed.subject, text: parsed.text },
+        };
+      }
+    }
+
+    if (parsed.type === 'email.send.result.v1' && typeof parsed.ok === 'boolean') {
+      return {
+        kind: 'relay-result',
+        result: {
+          type: 'email.send.result.v1',
+          ok: parsed.ok,
+          mailgunId: typeof parsed.mailgunId === 'string' ? parsed.mailgunId : null,
+          error: typeof parsed.error === 'string' ? parsed.error : null,
+        },
+      };
+    }
+
+    if (parsed.type !== 'email' || parsed.v !== 1) {
       return { kind: 'text', text: content };
     }
 
@@ -65,4 +103,3 @@ export function decodeXmtpEmail(content: unknown): DecodedXmtpEmail {
     return { kind: 'text', text: content };
   }
 }
-

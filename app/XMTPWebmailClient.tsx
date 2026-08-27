@@ -9,6 +9,7 @@ import { hexToBytes } from 'viem';
 import { wagmiConfig } from '@/lib/wagmiConfig';
 import { decodeXmtpEmail, encodeXmtpEmailV1 } from '@/lib/xmtpEmail';
 import { isHexAddress, parseRecipient, shortenAddress } from '@/lib/xmtpAddressing';
+import { encodeEmailSendV1, getRelayInboxId } from '@/lib/xmtpRelay';
 import { ThemeToggle } from './ThemeContext';
 import { WalletConnectButton } from './WalletConnectButton';
 import { useWalletSession } from './WalletSessionProvider';
@@ -43,7 +44,7 @@ const WELCOME_MESSAGE: Omit<WelcomeConversationSummary, 'kind' | 'id'> = {
   subject: 'Welcome to xmtp.mx',
   preview: 'Here’s what this XMTP inbox does and how to try it out.',
   body:
-    'Hi there,\n\nThanks for opening xmtp.mx — a Gmail-inspired inbox that speaks the XMTP messaging network.\n\nWhen you connect a wallet, it signs XMTP identity updates directly and this browser becomes one of your XMTP installations. Messages are encrypted end-to-end and stay on XMTP; there is no central inbox server here.\n\nYou can send to onchain addresses or ENS names (e.g. deanpierce.eth). SMTP delivery is on the roadmap, but today you’ll want to message XMTP peers.\n\nHave fun, and thanks for testing!',
+    'Hi there,\n\nThanks for opening xmtp.mx — a Gmail-inspired inbox that speaks the XMTP messaging network.\n\nWhen you connect a wallet, it signs XMTP identity updates directly and this browser becomes one of your XMTP installations. Messages are encrypted end-to-end and stay on XMTP; there is no central inbox server here.\n\nYou can send to onchain addresses, ENS names (e.g. deanpierce.eth), or ordinary email addresses. Email delivery is handed to the xmtp.mx relay over XMTP.\n\nHave fun, and thanks for testing!',
   timestamp: new Date(),
 };
 
@@ -392,6 +393,22 @@ function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply, th
                           {decoded.email.subject || '(no subject)'}
                         </div>
                         <div className="whitespace-pre-wrap text-sm" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>{decoded.email.body}</div>
+                      </div>
+                    ) : decoded.kind === 'relay-request' ? (
+                      <div className="space-y-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: isSelf ? 'rgba(255,255,255,0.72)' : 'var(--foreground-muted)' }}>
+                          Email delivery request · {decoded.request.to.join(', ')}
+                        </div>
+                        <div className="text-sm font-semibold" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>
+                          {decoded.request.subject || '(no subject)'}
+                        </div>
+                        <div className="whitespace-pre-wrap text-sm" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>{decoded.request.text}</div>
+                      </div>
+                    ) : decoded.kind === 'relay-result' ? (
+                      <div className="space-y-1 text-sm" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>
+                        <div className="font-semibold">{decoded.result.ok ? 'Email delivered' : 'Email delivery failed'}</div>
+                        {decoded.result.error ? <div>{decoded.result.error}</div> : null}
+                        {decoded.result.mailgunId ? <div className="text-xs opacity-70">Receipt {decoded.result.mailgunId}</div> : null}
                       </div>
                     ) : (
                       <div className="whitespace-pre-wrap text-sm" style={{ color: isSelf ? 'white' : 'var(--foreground)' }}>{decoded.text}</div>
@@ -1338,23 +1355,38 @@ const XMTPWebmailClient: React.FC = () => {
         return;
       }
 
+      let dm: Dm;
+      let payload: string;
+
       if (parsed.kind === 'smtp') {
-        setComposeError('SMTP delivery is not wired up yet. Use an @xmtp.mx address or an onchain address/ENS name.');
-        return;
+        const relayInboxId = getRelayInboxId();
+        if (!relayInboxId) {
+          throw new Error('Email delivery is temporarily unavailable because the relay is not configured.');
+        }
+        if (relayInboxId === xmtpClient.inboxId) {
+          throw new Error('This XMTP identity cannot send through itself as the email relay.');
+        }
+
+        dm = await xmtpClient.conversations.newDm(relayInboxId);
+        payload = encodeEmailSendV1({
+          to: parsed.email,
+          subject: composeSubject,
+          text: composeBody,
+        });
+      } else {
+        const peerAddress = await resolvePeerAddress(parsed.peer);
+        dm = await xmtpClient.conversations.newDmWithIdentifier({
+          identifier: peerAddress,
+          identifierKind: ETHEREUM_IDENTIFIER_KIND,
+        });
+        payload = encodeXmtpEmailV1({
+          subject: composeSubject.trim() || '(no subject)',
+          body: composeBody,
+          from: clientAddress,
+          to: composeTo.trim(),
+        });
       }
 
-      const peerAddress = await resolvePeerAddress(parsed.peer);
-      const payload = encodeXmtpEmailV1({
-        subject: composeSubject.trim() || '(no subject)',
-        body: composeBody,
-        from: clientAddress,
-        to: composeTo.trim(),
-      });
-
-      const dm = await xmtpClient.conversations.newDmWithIdentifier({
-        identifier: peerAddress,
-        identifierKind: ETHEREUM_IDENTIFIER_KIND,
-      });
       await dm.send(payload);
       const peerInfo = await loadConversationPeers(dm);
       upsertConversationSummary({ conversation: dm, peerAddress: peerInfo.peerAddress, peerInboxId: peerInfo.peerInboxId, lastMessage: undefined });
@@ -2330,9 +2362,15 @@ const XMTPWebmailClient: React.FC = () => {
                       const preview = decodedLast
                         ? decodedLast.kind === 'email'
                           ? decodedLast.email.subject || '(no subject)'
+                          : decodedLast.kind === 'relay-request'
+                            ? `${decodedLast.request.subject || '(no subject)'} · to ${decodedLast.request.to.join(', ')}`
+                            : decodedLast.kind === 'relay-result'
+                              ? decodedLast.result.ok ? 'Email delivered' : `Delivery failed${decodedLast.result.error ? `: ${decodedLast.result.error}` : ''}`
                           : decodedLast.text
                         : 'No messages yet.';
                       const isSelected = selectedConversationId === summary.id;
+                      const isRelay = summary.peerInboxId === getRelayInboxId();
+                      const displayLabel = isRelay ? 'Email relay' : label;
 
                       return (
                         <button
@@ -2351,11 +2389,11 @@ const XMTPWebmailClient: React.FC = () => {
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3 truncate">
                               <span className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border-subtle)' }}>
-                                {label.slice(0, 2).toUpperCase()}
+                                {displayLabel.slice(0, 2).toUpperCase()}
                               </span>
                               <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{label}</div>
-                                <div className="mt-0.5 truncate text-[11px]" style={{ color: 'var(--foreground-muted)' }}>Encrypted thread on XMTP</div>
+                                <div className="truncate text-sm font-semibold" style={{ color: 'var(--foreground)' }}>{displayLabel}</div>
+                                <div className="mt-0.5 truncate text-[11px]" style={{ color: 'var(--foreground-muted)' }}>{isRelay ? 'Email delivery over XMTP' : 'Encrypted thread on XMTP'}</div>
                               </div>
                             </div>
                             <div className="shrink-0 text-xs" style={{ color: 'var(--foreground-muted)' }}>{formatTimestamp(lastMessageDate)}</div>
@@ -2378,8 +2416,8 @@ const XMTPWebmailClient: React.FC = () => {
                       messages={selectedMessages}
                       selfInboxId={xmtpClient.inboxId}
                       inboxDetails={inboxDetails}
-                      threadTitle={selectedConversation.peerAddress ?? selectedConversation.peerInboxId ?? shortenInboxId(selectedConversation.id)}
-                      threadSubtitle="Encrypted on XMTP"
+                      threadTitle={selectedConversation.peerInboxId === getRelayInboxId() ? 'Email relay' : selectedConversation.peerAddress ?? selectedConversation.peerInboxId ?? shortenInboxId(selectedConversation.id)}
+                      threadSubtitle={selectedConversation.peerInboxId === getRelayInboxId() ? 'Outbound email delivery over XMTP' : 'Encrypted on XMTP'}
                       onReply={(options) => handleSendReply(options)}
                     />
                   )

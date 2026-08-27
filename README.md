@@ -89,7 +89,10 @@ XMTP relay logic belongs in the separately deployed relay architecture.
 
 - `deanpierce.eth@xmtp.mx` → `deanpierce.eth` (resolved via ENS) → sent on XMTP to that address
 - `0xabc...@xmtp.mx` → `0xabc...` → sent on XMTP to that address
-- Anything not `@xmtp.mx` currently returns an error (SMTP delivery is not implemented yet)
+- Ordinary email addresses are sent as `email.send.v1` requests over XMTP to the
+  public inbox configured by `NEXT_PUBLIC_XMTP_RELAY_INBOX_ID`
+- The relay's private key stays in the separately deployed relay environment and
+  is never included in this static frontend
 
 ## Message format
 

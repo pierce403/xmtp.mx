@@ -96,14 +96,16 @@
 ### Compose to `@xmtp.mx` Recipients
 
 - **Stability**: in-progress
-- **Description**: Compose supports `name@xmtp.mx` mapping and ENS resolution for peer addressing.
+- **Description**: Compose supports `name@xmtp.mx` mapping, ENS resolution, and ordinary email delivery through the XMTP relay.
 - **Properties**:
   - `deanpierce.eth@xmtp.mx` maps to peer `deanpierce.eth` and resolves via ENS
   - `0x…@xmtp.mx` maps directly to the 0x address
-  - Non-`@xmtp.mx` recipients are treated as SMTP (not yet implemented)
+  - Non-`@xmtp.mx` recipients are sent to the configured relay inbox as `email.send.v1`
+  - The browser receives only the relay's public inbox ID; private relay credentials remain server-side
 - **Test Criteria**:
   - [ ] Composing to `0x...@xmtp.mx` sends a JSON email message on XMTP
   - [ ] Composing to `deanpierce.eth@xmtp.mx` resolves via ENS and sends on XMTP
+  - [x] Ordinary email recipients use the relay's `email.send.v1` wire format
 
 ### SMTP → XMTP Bridge Library
 
