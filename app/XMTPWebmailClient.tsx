@@ -491,14 +491,42 @@ function Thread({ conversation, messages, selfInboxId, inboxDetails, onReply, th
   );
 }
 
-function WelcomeThread({ conversation }: { conversation: WelcomeConversationSummary }) {
+function WelcomeThread({
+  conversation,
+  onClose,
+  onHeaderMouseDown,
+}: {
+  conversation: WelcomeConversationSummary;
+  onClose?: () => void;
+  onHeaderMouseDown?: (event: React.MouseEvent) => void;
+}) {
   const paragraphs = useMemo(() => conversation.body.split('\n\n'), [conversation.body]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-3xl backdrop-blur-md" style={{ background: 'var(--card-bg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border-subtle)' }}>
-      <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-        <div className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>{conversation.subject}</div>
-        <div className="text-xs" style={{ color: 'var(--foreground-muted)' }}>From XMTP Mailroom • {formatTimestamp(conversation.timestamp)}</div>
+      <div
+        className="flex items-start justify-between gap-3 px-6 py-5"
+        style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)', cursor: onHeaderMouseDown ? 'move' : undefined, userSelect: onHeaderMouseDown ? 'none' : undefined }}
+        onMouseDown={onHeaderMouseDown}
+      >
+        <div className="min-w-0">
+          <div className="truncate text-lg font-semibold" style={{ color: 'var(--foreground)' }}>{conversation.subject}</div>
+          <div className="text-xs" style={{ color: 'var(--foreground-muted)' }}>From XMTP Mailroom • {formatTimestamp(conversation.timestamp)}</div>
+        </div>
+        {onClose ? (
+          <button
+            data-modal-action="true"
+            type="button"
+            aria-label="Close welcome thread"
+            className="btn-nav shrink-0"
+            style={{ padding: '6px' }}
+            onClick={onClose}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        ) : null}
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
@@ -579,6 +607,7 @@ const XMTPWebmailClient: React.FC = () => {
   const [demoMode, setDemoMode] = useState(false);
   const [demoSelectedId, setDemoSelectedId] = useState<string | null>(null);
   const [demoView, setDemoView] = useState<'inbox' | 'sent' | 'contacts'>('inbox');
+  const [demoNotice, setDemoNotice] = useState<string | null>(null);
   const demoMailListRef = useRef<HTMLDivElement | null>(null);
   const [demoMailListSize, setDemoMailListSize] = useState({ width: 0, height: 0 });
   const demoMailListSizeRef = useRef({ width: 0, height: 0 });
@@ -595,9 +624,23 @@ const XMTPWebmailClient: React.FC = () => {
     setDemoMode(true);
     setDemoSelectedId(null);
     setDemoView('inbox');
+    setDemoNotice(null);
     if (typeof window !== 'undefined' && !options?.fromUrl) {
       const url = new URL(window.location.href);
       url.searchParams.set('demo', '1');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
+  const disableDemoMode = useCallback(() => {
+    setDemoMode(false);
+    setDemoSelectedId(null);
+    setComposeOpen(false);
+    setComposeError(null);
+    setDemoNotice(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('demo');
       window.history.replaceState({}, '', url.toString());
     }
   }, []);
@@ -746,16 +789,20 @@ const XMTPWebmailClient: React.FC = () => {
     [handleDemoPointerMove, handleDemoPointerUp],
   );
 
-  // Close modal on Escape key
+  // Close the topmost demo surface on Escape.
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && demoSelectedId) {
+      if (e.key !== 'Escape') return;
+      if (composeOpen) {
+        setComposeOpen(false);
+        setComposeError(null);
+      } else if (demoSelectedId) {
         setDemoSelectedId(null);
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [demoSelectedId]);
+  }, [composeOpen, demoSelectedId]);
 
 
   const debug = useCallback(
@@ -1340,6 +1387,25 @@ const XMTPWebmailClient: React.FC = () => {
     }
   };
 
+  const handleDemoComposeSend = () => {
+    const recipient = composeTo.trim();
+    if (!recipient) {
+      setComposeError('Add an ENS name or 0x address.');
+      return;
+    }
+    if (!composeBody.trim()) {
+      setComposeError('Write a message before sending.');
+      return;
+    }
+
+    setComposeError(null);
+    setComposeOpen(false);
+    setDemoNotice(`Demo message prepared for ${recipient}. Connect a wallet to send it on XMTP.`);
+    setComposeTo('');
+    setComposeSubject('');
+    setComposeBody('');
+  };
+
   // ===== DEMO MODE RENDER =====
   if (demoMode) {
     const welcomeConvo: WelcomeConversationSummary = { kind: 'welcome', id: WELCOME_CONVERSATION_ID, ...WELCOME_MESSAGE };
@@ -1347,16 +1413,26 @@ const XMTPWebmailClient: React.FC = () => {
       ? welcomeConvo
       : DEMO_CONVERSATIONS.find(c => c.id === demoSelectedId);
     const lastSyncTime = new Date(Date.now() - 1000 * 60 * 2); // 2 mins ago for demo
+    const normalizedDemoSearch = search.trim().toLowerCase();
+    const showDemoWelcome = !normalizedDemoSearch || 'welcome xmtp team'.includes(normalizedDemoSearch);
+    const filteredDemoConversations = DEMO_CONVERSATIONS.filter((conversation) => {
+      if (!normalizedDemoSearch) return true;
+      return (
+        conversation.peerName?.toLowerCase().includes(normalizedDemoSearch) ||
+        conversation.peerAddress.toLowerCase().includes(normalizedDemoSearch) ||
+        conversation.messages.some((message) => message.content.toLowerCase().includes(normalizedDemoSearch))
+      );
+    });
 
     return (
       <div className="min-h-dvh" style={{ background: 'var(--gradient-page)' }}>
-        <div className="mx-auto flex h-dvh max-w-6xl flex-col gap-3 p-3">
+        <div className="mx-auto flex h-dvh max-w-6xl flex-col gap-2 p-2 sm:gap-3 sm:p-3">
           {/* Header */}
-          <header className="header-glass flex items-center justify-between px-4 animate-fade-in" style={{ borderRadius: '12px', height: '56px' }}>
+          <header className="header-glass flex min-h-14 items-center justify-between gap-3 px-3 py-2 animate-fade-in sm:px-4" style={{ borderRadius: '12px' }}>
             {/* Left: Logo + Title */}
             <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg text-base" style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-glow-sm)' }}>
-                ✉️
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg text-[11px] font-black tracking-tight text-white" style={{ background: 'var(--gradient-accent)', boxShadow: 'var(--shadow-glow-sm)' }}>
+                XM
               </div>
               <div>
                 <div className="text-sm font-bold gradient-text">xmtp.mx</div>
@@ -1377,44 +1453,36 @@ const XMTPWebmailClient: React.FC = () => {
                 <ThemeToggle />
               </div>
 
-              {/* Settings */}
-              <button
-                type="button"
-                className="btn-nav"
-                style={{ padding: '6px' }}
-                title="Settings"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-
-              {/* Divider */}
-              <div className="h-6 w-px" style={{ background: 'var(--border)' }}></div>
-
               {/* Identity / Profile */}
-              <button type="button" className="btn-nav flex items-center gap-2" style={{ padding: '4px 8px 4px 4px' }}>
+              <div className="hidden items-center gap-2 rounded-lg border px-2 py-1 sm:flex" style={{ borderColor: 'var(--border)', background: 'var(--surface-glass)' }}>
                 <div className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: 'var(--gradient-accent)' }}>
                   DP
                 </div>
-                <div className="hidden sm:block text-left">
+                <div className="text-left">
                   <div className="text-xs font-semibold" style={{ color: 'var(--foreground)' }}>demo.eth</div>
                   <div className="text-[9px] font-mono" style={{ color: 'var(--foreground-muted)' }}>0x71C7...1F3a</div>
                 </div>
-                <svg className="h-3.5 w-3.5 hidden sm:block" style={{ color: 'var(--foreground-muted)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path d="M19 9l-7 7-7-7" />
-                </svg>
+              </div>
+
+              <button type="button" className="btn-nav whitespace-nowrap" onClick={disableDemoMode}>
+                Exit demo
               </button>
             </div>
           </header>
 
+          {demoNotice ? (
+            <div role="status" className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs shadow-sm" style={{ background: 'var(--accent-success-subtle)', borderColor: 'var(--accent-success)', color: 'var(--foreground)' }}>
+              <span>{demoNotice}</span>
+              <button type="button" className="font-semibold" onClick={() => setDemoNotice(null)}>Dismiss</button>
+            </div>
+          ) : null}
+
           {/* Main Content */}
-          <div className="flex flex-1 gap-3 overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden sm:flex-row sm:gap-3">
             {/* Sidebar */}
-            <aside className="flex w-[160px] shrink-0 flex-col animate-fade-in delay-1">
-              <div className="sidebar-glass" style={{ borderRadius: 'var(--radius-lg)', padding: '12px' }}>
-                <nav className="flex flex-col gap-1.5">
+            <aside className="flex w-full shrink-0 flex-col animate-fade-in delay-1 sm:w-[160px]">
+              <div className="sidebar-glass p-2 sm:p-3" style={{ borderRadius: 'var(--radius-lg)' }}>
+                <nav aria-label="Demo mailbox" className="grid grid-cols-4 gap-1.5 sm:flex sm:flex-col">
                   {/* Compose */}
                   <button
                     type="button"
@@ -1431,6 +1499,7 @@ const XMTPWebmailClient: React.FC = () => {
                     }}
                     onClick={() => {
                       setDemoSelectedId(null);
+                      setComposeError(null);
                       setComposeOpen(true);
                     }}
                   >
@@ -1440,10 +1509,11 @@ const XMTPWebmailClient: React.FC = () => {
                     <span style={{ lineHeight: '14px' }}>Compose</span>
                   </button>
 
-                  <div className="my-1.5 h-px" style={{ background: 'var(--border)' }}></div>
+                  <div className="my-1.5 hidden h-px sm:block" style={{ background: 'var(--border)' }}></div>
 
                   {/* Inbox */}
                   <button
+                    type="button"
                     onClick={() => setDemoView('inbox')}
                     className="btn-nav w-full"
                     data-active={demoView === 'inbox' ? 'true' : undefined}
@@ -1458,6 +1528,7 @@ const XMTPWebmailClient: React.FC = () => {
                   </button>
                   {/* Sent */}
                   <button
+                    type="button"
                     onClick={() => setDemoView('sent')}
                     className="btn-nav w-full"
                     data-active={demoView === 'sent' ? 'true' : undefined}
@@ -1470,6 +1541,7 @@ const XMTPWebmailClient: React.FC = () => {
                   </button>
                   {/* Contacts */}
                   <button
+                    type="button"
                     onClick={() => setDemoView('contacts')}
                     className="btn-nav w-full"
                     data-active={demoView === 'contacts' ? 'true' : undefined}
@@ -1489,6 +1561,7 @@ const XMTPWebmailClient: React.FC = () => {
               className="relative flex min-w-0 flex-1 overflow-hidden card-shiny animate-fade-in delay-2"
               style={{ borderRadius: '12px' }}
               ref={demoMailListRef}
+              data-testid="demo-mail-list"
             >
               {demoView === 'contacts' ? (
                 /* Contacts View */
@@ -1523,7 +1596,7 @@ const XMTPWebmailClient: React.FC = () => {
               ) : demoView === 'sent' ? (
                 /* Sent View */
                 <div className="flex-1 overflow-y-auto">
-                  <div className="flex items-center justify-between px-4 py-3 glass-strong" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <div className="flex flex-col gap-2 px-4 py-3 glass-strong sm:flex-row sm:items-center sm:justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
                     <div>
                       <div className="text-sm font-bold gradient-text">Sent</div>
                       <div className="text-[11px]" style={{ color: 'var(--foreground-muted)' }}>Messages you&apos;ve sent</div>
@@ -1563,13 +1636,14 @@ const XMTPWebmailClient: React.FC = () => {
                       <div className="text-sm font-bold gradient-text">Inbox</div>
                       <div className="text-[11px]" style={{ color: 'var(--foreground-muted)' }}>{DEMO_CONVERSATIONS.length + 1} messages</div>
                     </div>
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                       <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: 'var(--foreground-subtle)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                       <input
-                        className="input w-52 text-sm pl-9"
-                        placeholder="Search..."
+                        aria-label="Search demo inbox"
+                        className="input w-full text-sm pl-9 sm:w-52"
+                        placeholder="Search inbox"
                         value={search}
                         onChange={(e) => setSearch(e.currentTarget.value)}
                         style={{ height: '32px' }}
@@ -1579,10 +1653,10 @@ const XMTPWebmailClient: React.FC = () => {
                   {/* Message Rows */}
                   <div>
                     {/* Welcome row */}
-                    {(!search || 'welcome xmtp team'.includes(search.toLowerCase())) && (
+                    {showDemoWelcome && (
                       <button
                         type="button"
-                        className="inbox-row flex w-full items-center gap-3 px-4 py-3 text-left animate-fade-in"
+                        className="inbox-row w-full text-left animate-fade-in"
                         onClick={() => {
                           setComposeOpen(false);
                           setDemoSelectedId(WELCOME_CONVERSATION_ID);
@@ -1593,8 +1667,8 @@ const XMTPWebmailClient: React.FC = () => {
                             <path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                           </svg>
                         </div>
-                        <div className="w-28 shrink-0 truncate font-semibold text-sm" style={{ color: 'var(--foreground)' }}>XMTP Team</div>
-                        <div className="min-w-0 flex-1 truncate text-sm" style={{ color: 'var(--foreground-muted)' }}>Welcome to xmtp.mx — Your decentralized inbox</div>
+                        <div className="min-w-0 truncate font-semibold text-sm" style={{ color: 'var(--foreground)' }}>XMTP Team</div>
+                        <div className="hidden min-w-0 truncate text-sm sm:block" style={{ color: 'var(--foreground-muted)' }}>Welcome to xmtp.mx — Your decentralized inbox</div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase" style={{ background: 'var(--accent-success-subtle)', color: 'var(--accent-success)' }}>New</span>
                           <span className="text-[11px] font-mono" style={{ color: 'var(--foreground-subtle)' }}>Now</span>
@@ -1602,14 +1676,7 @@ const XMTPWebmailClient: React.FC = () => {
                       </button>
                     )}
                     {/* Conversations */}
-                    {DEMO_CONVERSATIONS
-                      .filter(convo => {
-                        if (!search) return true;
-                        const q = search.toLowerCase();
-                        return (convo.peerName?.toLowerCase().includes(q) ||
-                          convo.peerAddress.toLowerCase().includes(q) ||
-                          convo.messages.some(m => m.content.toLowerCase().includes(q)));
-                      })
+                    {filteredDemoConversations
                       .map((convo, idx) => {
                         const lastMsg = convo.messages[convo.messages.length - 1];
                         const subject = lastMsg?.isEmail && lastMsg.subject ? lastMsg.subject : lastMsg?.content.slice(0, 60);
@@ -1617,7 +1684,7 @@ const XMTPWebmailClient: React.FC = () => {
                           <button
                             type="button"
                             key={convo.id}
-                            className="inbox-row flex w-full items-center gap-3 px-4 py-3 text-left animate-fade-in"
+                            className="inbox-row w-full text-left animate-fade-in"
                             style={{ animationDelay: `${(idx + 1) * 50}ms` }}
                             onClick={() => {
                               setComposeOpen(false);
@@ -1627,12 +1694,18 @@ const XMTPWebmailClient: React.FC = () => {
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-transform hover:scale-105" style={{ background: 'var(--surface)', color: 'var(--foreground-muted)', border: '1px solid var(--border)' }}>
                               {(convo.peerName || convo.peerAddress).slice(0, 2).toUpperCase()}
                             </div>
-                            <div className="w-28 shrink-0 truncate font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{convo.peerName || convo.peerAddress}</div>
-                            <div className="min-w-0 flex-1 truncate text-sm" style={{ color: 'var(--foreground-muted)' }}>{subject}</div>
+                            <div className="min-w-0 truncate font-semibold text-sm" style={{ color: 'var(--foreground)' }}>{convo.peerName || convo.peerAddress}</div>
+                            <div className="hidden min-w-0 truncate text-sm sm:block" style={{ color: 'var(--foreground-muted)' }}>{subject}</div>
                             <div className="text-[11px] font-mono shrink-0" style={{ color: 'var(--foreground-subtle)' }}>{formatTimestamp(convo.lastMessageAt)}</div>
                           </button>
                         );
                       })}
+                    {!showDemoWelcome && filteredDemoConversations.length === 0 ? (
+                      <div className="px-5 py-10 text-center">
+                        <div className="text-sm font-semibold" style={{ color: 'var(--foreground)' }}>No matching messages</div>
+                        <div className="mt-1 text-xs" style={{ color: 'var(--foreground-muted)' }}>Try an ENS name, address, or message text.</div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               )}
@@ -1655,9 +1728,17 @@ const XMTPWebmailClient: React.FC = () => {
                       height: demoModalRect.height,
                     }}
                     onClick={(e) => e.stopPropagation()}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Demo conversation"
+                    data-testid="demo-conversation-dialog"
                   >
                     {selectedDemo && 'kind' in selectedDemo && selectedDemo.kind === 'welcome' ? (
-                      <WelcomeThread conversation={selectedDemo} />
+                      <WelcomeThread
+                        conversation={selectedDemo}
+                        onClose={() => setDemoSelectedId(null)}
+                        onHeaderMouseDown={startDemoDrag}
+                      />
                     ) : selectedDemo && !('kind' in selectedDemo) ? (
                       <>
                         {/* Modal Header */}
@@ -1687,6 +1768,7 @@ const XMTPWebmailClient: React.FC = () => {
                           <button
                             data-modal-action="true"
                             type="button"
+                            aria-label="Close conversation"
                             className="btn-nav"
                             style={{ padding: '6px' }}
                             onClick={() => setDemoSelectedId(null)}
@@ -1778,6 +1860,10 @@ const XMTPWebmailClient: React.FC = () => {
                       height: demoModalRect.height,
                     }}
                     onClick={(e) => e.stopPropagation()}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="demo-compose-title"
+                    data-testid="demo-compose-dialog"
                   >
                     {/* Modal Header */}
                     <div
@@ -1785,13 +1871,17 @@ const XMTPWebmailClient: React.FC = () => {
                       style={{ borderBottom: '1px solid var(--border)', cursor: 'move', userSelect: 'none' }}
                       onMouseDown={startDemoDrag}
                     >
-                      <div className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>New Message</div>
+                      <div id="demo-compose-title" className="text-sm font-bold" style={{ color: 'var(--foreground)' }}>New message</div>
                       <button
                         data-modal-action="true"
                         type="button"
+                        aria-label="Close compose"
                         className="btn-nav"
                         style={{ padding: '6px' }}
-                        onClick={() => setComposeOpen(false)}
+                        onClick={() => {
+                          setComposeOpen(false);
+                          setComposeError(null);
+                        }}
                       >
                         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path d="M6 18L18 6M6 6l12 12" />
@@ -1801,28 +1891,49 @@ const XMTPWebmailClient: React.FC = () => {
 
                     {/* Modal Body */}
                     <div className="flex-1 p-4 space-y-3" style={{ background: 'var(--background-subtle)' }}>
+                      {composeError ? (
+                        <div role="alert" className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'var(--accent-error)', background: 'var(--accent-error-subtle)', color: 'var(--accent-error)' }}>
+                          {composeError}
+                        </div>
+                      ) : null}
                       <div>
-                        <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>To</label>
+                        <label htmlFor="demo-compose-to" className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>To</label>
                         <input
+                          id="demo-compose-to"
+                          autoFocus
                           className="input w-full text-sm"
                           placeholder="vitalik.eth or 0x..."
+                          value={composeTo}
+                          onChange={(event) => {
+                            setComposeTo(event.currentTarget.value);
+                            setComposeError(null);
+                          }}
                           style={{ height: '36px', borderRadius: '8px', lineHeight: '34px', padding: '0 12px' }}
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>Subject</label>
+                        <label htmlFor="demo-compose-subject" className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>Subject</label>
                         <input
+                          id="demo-compose-subject"
                           className="input w-full text-sm"
                           placeholder="(optional)"
+                          value={composeSubject}
+                          onChange={(event) => setComposeSubject(event.currentTarget.value)}
                           style={{ height: '36px', borderRadius: '8px', lineHeight: '34px', padding: '0 12px' }}
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>Message</label>
+                        <label htmlFor="demo-compose-body" className="block text-[11px] font-semibold mb-1" style={{ color: 'var(--foreground-muted)', lineHeight: '1' }}>Message</label>
                         <textarea
+                          id="demo-compose-body"
                           className="input w-full text-sm resize-none"
                           placeholder="Write your message..."
                           rows={6}
+                          value={composeBody}
+                          onChange={(event) => {
+                            setComposeBody(event.currentTarget.value);
+                            setComposeError(null);
+                          }}
                           style={{ borderRadius: '8px', padding: '10px 12px' }}
                         />
                       </div>
@@ -1835,7 +1946,10 @@ const XMTPWebmailClient: React.FC = () => {
                         type="button"
                         className="btn-nav"
                         style={{ padding: '8px 16px', fontSize: '13px' }}
-                        onClick={() => setComposeOpen(false)}
+                        onClick={() => {
+                          setComposeOpen(false);
+                          setComposeError(null);
+                        }}
                       >
                         Cancel
                       </button>
@@ -1844,10 +1958,7 @@ const XMTPWebmailClient: React.FC = () => {
                         type="button"
                         className="btn-primary flex items-center gap-1.5"
                         style={{ height: '34px', padding: '0 16px', fontSize: '13px', borderRadius: '8px' }}
-                        onClick={() => {
-                          alert('Demo mode: Messages cannot be sent. Connect a wallet to send real messages!');
-                          setComposeOpen(false);
-                        }}
+                        onClick={handleDemoComposeSend}
                       >
                         <svg className="h-[14px] w-[14px] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -1985,27 +2096,26 @@ const XMTPWebmailClient: React.FC = () => {
             <div className="relative grid gap-10 lg:grid-cols-2">
               <div className="space-y-6">
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">
-                  <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.7)]" /> XMTP + Static export
+                  <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.7)]" /> Encrypted messages, familiar inbox
                 </div>
 
                 <div className="space-y-3">
-                  <h1 className="text-3xl font-bold leading-tight text-white md:text-4xl">
-                    xmtp.mx mail — now with a purple metallic welcome
+                  <h1 className="max-w-xl text-4xl font-bold leading-[1.05] tracking-[-0.04em] text-white md:text-6xl">
+                    Your wallet has an inbox.
                   </h1>
-                  <p className="max-w-2xl text-base text-white/80">
-                    All the same details as before: XMTP threads that look like email, end-to-end encryption, and wallet-backed identity.
-                    Connect to start messaging or jump into the guided demo to explore the inbox layout.
+                  <p className="max-w-xl text-base leading-relaxed text-white/75 md:text-lg">
+                    Read and write encrypted XMTP messages with the calm, scannable rhythm of email. Your wallet is the account; your conversations stay on XMTP.
                   </p>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="card-shiny border border-white/15 bg-white/10 p-4 shadow-[0_15px_50px_rgba(0,0,0,0.35)]">
-                    <div className="text-sm font-semibold text-white">Encrypted inbox</div>
-                    <p className="mt-1 text-sm text-white/75">Wallet-based XMTP identity with Gmail-inspired threading.</p>
+                    <div className="text-sm font-semibold text-white">Private by default</div>
+                    <p className="mt-1 text-sm text-white/70">End-to-end encrypted conversations, presented as readable threads.</p>
                   </div>
                   <div className="card-shiny border border-white/15 bg-white/10 p-4 shadow-[0_15px_50px_rgba(0,0,0,0.35)]">
-                    <div className="text-sm font-semibold text-white">Static-friendly</div>
-                    <p className="mt-1 text-sm text-white/75">Built for Cloudflare Workers Static Assets with client-side XMTP and thirdweb.</p>
+                    <div className="text-sm font-semibold text-white">No new account</div>
+                    <p className="mt-1 text-sm text-white/70">Connect a wallet and use an ENS name or address to start a thread.</p>
                   </div>
                 </div>
 
@@ -2019,11 +2129,11 @@ const XMTPWebmailClient: React.FC = () => {
                     onClick={() => enableDemoMode()}
                   >
                     <span className="inline-block h-2 w-2 rounded-full bg-purple-200 shadow-[0_0_8px_rgba(196,181,253,0.8)]" />
-                    Launch demo mode
+                    Open demo inbox
                   </button>
                   <div className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[12px] font-semibold text-white/80">
                     <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.7)]" />
-                    XMTP {xmtpEnv}
+                    No wallet needed for demo
                   </div>
                 </div>
 
@@ -2031,43 +2141,44 @@ const XMTPWebmailClient: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <div className="rounded-3xl border border-white/15 bg-white/10 p-5 shadow-[0_15px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+                <div className="overflow-hidden rounded-3xl border border-white/15 bg-white/10 shadow-[0_15px_50px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
                   <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-white">System checks</div>
-                      <div className="text-xs text-white/70">Wallet provider, XMTP, and thirdweb readiness</div>
-                    </div>
-                    <div className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-[11px] font-semibold text-white/80">
-                      <span className="h-2 w-2 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(125,211,252,0.7)]" />
-                      Live preview
+                    <div className="flex w-full items-center justify-between border-b border-white/10 px-5 py-4">
+                      <div>
+                        <div className="text-sm font-semibold text-white">Inbox preview</div>
+                        <div className="text-xs text-white/60">A quieter way to read XMTP</div>
+                      </div>
+                      <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-300/10 px-2 py-1 text-[11px] font-semibold text-emerald-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Encrypted
+                      </div>
                     </div>
                   </div>
-                  <StartupStatusPanel
-                    xmtpEnv={xmtpEnv}
-                    thirdwebClient={Boolean(thirdwebClient)}
-                    thirdwebClientIdStatus={thirdwebClientIdStatus}
-                    thirdwebClientIdError={thirdwebClientIdError}
-                    activeAddress={activeAddress}
-                    hasActiveWallet={hasActiveWallet}
-                    isWasmInitialized={isWasmInitialized}
-                    wasmInitStalled={wasmInitStalled}
-                    wasmError={wasmError}
-                    isLoading={xmtpLoading}
-                    xmtpInitStalled={xmtpInitStalled}
-                    clientError={xmtpError ?? undefined}
-                    clientAddress={clientAddress}
-                    conversationsCount={xmtpConversationList.length}
-                  />
+                  <div className="divide-y divide-white/10">
+                    {[
+                      { initials: 'VI', name: 'vitalik.eth', preview: 'The XMTP integration looks great.', time: '9:42' },
+                      { initials: 'DP', name: 'deanpierce.eth', preview: 'Re: SMTP bridge progress', time: 'Yesterday' },
+                      { initials: 'AL', name: 'alice.eth', preview: 'Have you tried the new theme?', time: 'Mon' },
+                    ].map((thread) => (
+                      <div key={thread.name} className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 px-5 py-4 text-left">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/10 text-xs font-bold text-white">{thread.initials}</div>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-white">{thread.name}</div>
+                          <div className="truncate text-xs text-white/60">{thread.preview}</div>
+                        </div>
+                        <div className="text-[11px] text-white/45">{thread.time}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="card-shiny border border-white/15 bg-white/10 p-4 text-white shadow-[0_10px_35px_rgba(0,0,0,0.35)]">
-                    <div className="text-sm font-semibold">Email-like threads</div>
-                    <p className="mt-1 text-sm text-white/75">Compose to ENS or 0x addresses; SMTP delivery is on the roadmap.</p>
+                    <div className="text-sm font-semibold">Address it naturally</div>
+                    <p className="mt-1 text-sm text-white/70">Compose to an ENS name, wallet address, or xmtp.mx alias.</p>
                   </div>
                   <div className="card-shiny border border-white/15 bg-white/10 p-4 text-white shadow-[0_10px_35px_rgba(0,0,0,0.35)]">
-                    <div className="text-sm font-semibold">Try before connecting</div>
-                    <p className="mt-1 text-sm text-white/75">Demo mode mirrors the inbox layout with safe mock data.</p>
+                    <div className="text-sm font-semibold">Look around first</div>
+                    <p className="mt-1 text-sm text-white/70">The demo uses safe mock data and never asks for a signature.</p>
                   </div>
                 </div>
               </div>

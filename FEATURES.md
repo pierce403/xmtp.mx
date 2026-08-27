@@ -67,6 +67,8 @@
   - Thread view renders decoded messages and supports replies
   - Search filters conversations (currently by peer address)
 - **Test Criteria**:
+  - [x] Landing and demo flows pass Playwright on desktop Chrome and a Pixel 7 viewport
+  - [x] Demo navigation, search, compose validation, modal dismissal, and viewport containment are covered
   - [ ] With an XMTP-enabled wallet, conversations list loads
   - [ ] Selecting a conversation shows its thread
   - [ ] Sending a reply appends to the thread

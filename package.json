@@ -8,6 +8,8 @@
     "start": "node scripts/serve-static.mjs",
     "preview": "npm run build && npm run start",
     "lint": "next lint",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "cloudflare:dry-run:staging": "npx --yes wrangler@4.126.0 deploy --dry-run --config wrangler.jsonc",
     "cloudflare:dry-run:production-candidate": "npx --yes wrangler@4.126.0 versions upload --dry-run --config wrangler.production-preview.jsonc",
     "cloudflare:dry-run:production": "npx --yes wrangler@4.126.0 deploy --dry-run --config wrangler.production.jsonc",
@@ -33,6 +35,7 @@
     "thirdweb": "5.116.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "4.1.18",
     "@types/node": "25.0.3",
     "@types/react": "18.3.27",

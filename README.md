@@ -36,6 +36,16 @@ Then open `http://localhost:3000`.
 npm run preview
 ```
 
+### Browser UX tests
+
+The Playwright suite exercises the landing page and demo inbox at desktop and
+Pixel 7 sizes. It uses the installed Chrome channel by default; environments
+with a known Chrome binary can override it explicitly.
+
+```bash
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e
+```
+
 ## Cloudflare Workers Static Assets
 
 This repo remains a static export (`next.config.js` uses `output: 'export'`),

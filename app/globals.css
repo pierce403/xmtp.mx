@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* ========================================
    XMTP.MX Theme System - Light & Dark Mode
@@ -625,9 +623,9 @@ body {
   /* Gmail-style inbox row - Enhanced */
   .inbox-row {
     display: grid;
-    grid-template-columns: 40px 1fr 2fr auto;
-    gap: 1rem;
-    padding: 0.875rem 1rem;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
     align-items: center;
     border-bottom: 1px solid var(--border);
     transition: all var(--transition-fast);
@@ -662,6 +660,12 @@ body {
 
   .inbox-row.selected::before {
     transform: scaleY(1);
+  }
+
+  @media (min-width: 640px) {
+    .inbox-row {
+      grid-template-columns: 36px 112px minmax(0, 1fr) auto;
+    }
   }
 
   /* Sync status indicator */
