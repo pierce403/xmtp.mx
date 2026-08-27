@@ -1,6 +1,7 @@
 # IMPORTANT
 
 - After each meaningful change: `git commit` + `git push` (don’t leave work unpushed).
+- Push directly to `main` and deploy the validated commit directly to production. Do not leave completed work only on staging or a preview unless Pierce explicitly asks for a staged rollout.
 
 # AGENTS.md — Instructions for coding agents
 
@@ -100,6 +101,7 @@ npm run cloudflare:dry-run:production
 - Prefers concise updates and visible progress.
 - Values “make it work end-to-end” over polishing.
 - Always commit and push after each meaningful change.
+- Expects completed frontend changes to land on `main` and production by default; staging-only handoffs are not considered complete.
 
 ## Wins / Misses Log
 
@@ -130,6 +132,7 @@ npm run cloudflare:dry-run:production
 - Wins: A restrained, editorial visual system works better than layered glass effects for this mail UI; keep core surfaces flat, reserve violet for primary actions, and use `app-frame`, `landing-panel`, and the shared component presets in `app/globals.css`.
 - Wins: Verify visual changes at 1440px and 412px, then run `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e`; the suite covers responsive hierarchy, 44px primary action targets, wallet binding, navigation, search, dialogs, and viewport containment.
 - Misses: Decorative text inside a connector button changes its accessible name; set an explicit `aria-label` such as `${wallet.name} Connect` so screen-reader and Playwright locators remain stable.
+- Collaborator signal: Pierce explicitly requested “always push straight to main/prod”; after validation, publish directly to `main`, promote the exact SHA to production, and verify `https://xmtp.mx` rather than pausing at staging or an immutable preview.
 
 ### 2026-08-27
 - Wins: Cloudflare Workers Static Assets accepts the complete `out/` export (1,058 files in the final verified build); staging, production-preview, and cutover Wrangler configurations pass `wrangler deploy --dry-run`.
